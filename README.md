@@ -15,7 +15,7 @@ synchronized to the other projects.
 
 Now it is possible to use `git fast-export HEAD -- libcode.py libhelper.py > libcode1.fi`.
 
-Then merge them like `./git_Fast_export_merge.py libcode1.fi libcode2.fi -o libcode.fi`.
+Then merge them like `./git_fast_export_merge.py libcode1.fi libcode2.fi -o libcode.fi`.
 
 And the combined archive can be imported: `cd libbcode; cat ../libcode.fi | git fast-import`.
 
