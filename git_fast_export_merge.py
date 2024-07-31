@@ -25,6 +25,7 @@ addLevelName(NOTE, "NOTE")
 addLevelName(HINT, "HINT")
 logg = getLogger("MERGE")
 
+SUBDIR = ""
 MERGES = False
 COMMITTER = ""
 SKIPAUTHORS = []
@@ -376,7 +377,10 @@ def update_commit(data: str, frok: str, marks: Dict[str, NewMark], newfrom: str 
                     else:
                         logg.error("did not find oldmark %s", oldref)
                         newmark = oldmark
-                    newline = "%s %s %s %s" % (m.group(1), m.group(2), newmark, m.group(4))
+                    filename = m.group(4)
+                    if SUBDIR:
+                        filename = SUBDIR + "/" + filename
+                    newline = "%s %s %s %s" % (m.group(1), m.group(2), newmark, filename)
                 else:
                     logg.error("unknown change: %s", line)
                     newline = line
@@ -428,6 +432,12 @@ if __name__ == "__main__":
     cmdline.formatter.max_help_position = 33
     cmdline.add_option("-v", "--verbose", action="count", default=0,
                        help="increase logging level")
+    cmdline.add_option("-H", "--history", action="store_true", default=False,
+                       help="log the generated history (for checking)")
+    cmdline.add_option("-F", "--historyfile", metavar="F", default="",
+                       help="put the generated history into a file")
+    cmdline.add_option("-S", "--subdir", metavar="N", default="",
+                       help="rename files to be in subdir")
     cmdline.add_option("-c", "--committer", metavar="mail", default="",
                        help="defaults to author from ~/.gitconfig")
     cmdline.add_option("-s", "--skip", metavar="author*", action="append", default=[],
@@ -440,12 +450,9 @@ if __name__ == "__main__":
                        help="generate import to this branch (main)")
     cmdline.add_option("-o", "--output", metavar="file", default="",
                        help="generate into file instead of stdout")
-    cmdline.add_option("-H", "--history", action="store_true", default=False,
-                       help="log the generated history (for checking)")
-    cmdline.add_option("-F", "--historyfile", metavar="F", default="",
-                       help="put the generated history into a file")
     opt, args = cmdline.parse_args()
     basicConfig(level = ERROR - 5 * opt.verbose)
+    SUBDIR = opt.subdir
     MERGES = opt.merges
     BRANCH = opt.branch
     OUTPUT = opt.output
