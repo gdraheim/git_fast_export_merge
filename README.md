@@ -19,3 +19,6 @@ Then merge them like `./git_fast_export_merge.py libcode1.fi libcode2.fi -o libc
 
 And the combined archive can be imported: `cd libbcode; cat ../libcode.fi | git fast-import`.
 
+An example can be found here: https://github.com/gdraheim/tabtotext - extracted from
+https://github.com/gdraheim/timetrack-odoo and two report-tool archives.
+
