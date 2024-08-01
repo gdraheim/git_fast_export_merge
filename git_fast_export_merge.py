@@ -332,7 +332,7 @@ def update_commit(data: str, frok: str, marks: Dict[str, NewMark], newfrom: str 
                    oldref = frok+oldfrom
                    if oldref in marks:
                        newmark = marks[oldref].newmark
-                       if newmark != newfrom.strip() and MERGES:
+                       if newmark != newfrom.strip() and newfrom.startswith(":") and MERGES:
                            lines += ["merge "+newmark]
                 continue
             if line.startswith("merge :"):
@@ -384,7 +384,7 @@ def update_commit(data: str, frok: str, marks: Dict[str, NewMark], newfrom: str 
                    oldref = frok+oldfrom
                    if oldref in marks:
                        newmark = marks[oldref].newmark
-                       if newmark != newfrom.strip() and MERGES:
+                       if newmark != newfrom.strip() and newfrom.startswith(":") and MERGES:
                            lines += ["merge "+newmark]
                 continue
             if line.startswith("merge :"):
