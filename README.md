@@ -38,4 +38,6 @@ If you have a target repo then you can get that information like this:
 Provide these as `--head=hash-of-commit --date=date-of-commit`
 
 If you say `--into=./path/to/workspace` then the tool will run these commands itself.
+And adding `--import` the the fast-import will run on the into-workspace right-away.
+However this is completely optional.
 
