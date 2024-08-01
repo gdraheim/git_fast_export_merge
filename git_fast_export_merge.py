@@ -13,6 +13,7 @@ from datetime import timezone as TimeZone
 from datetime import timedelta as Plus
 from collections import OrderedDict
 from fnmatch import fnmatchcase as fnmatch
+from subprocess import check_output
 import os.path as fs
 import re
 import sys
@@ -25,11 +26,14 @@ addLevelName(NOTE, "NOTE")
 addLevelName(HINT, "HINT")
 logg = getLogger("MERGE")
 
+GIT = "git"
+HEAD = ""
+DATE = ""
 SUBDIR = ""
 MERGES = False
 COMMITTER = ""
-SKIPAUTHORS = []
-REPLACEAUTHORS = []
+SKIPAUTHORS: List[str] = []
+REPLACEAUTHORS: List[str] = []
 
 class Fromfile(NamedTuple):
     mark: str
@@ -77,15 +81,31 @@ class NewMark(NamedTuple):
     oldmark: str
     newmark: str
 
-def time_from(author: str) -> Optional[Time]:
-    m = re.match(".*@[^<>]*> *(\\d+) *([+-]\\d\\d)(\\d\\d)", author)
+def time_from(spec: str) -> Optional[Time]:
+    # in fast-import files, the time is given as unix-time seconds plus zone
+    m = re.match(".*@[^<>]*> *(\\d+) *([+-]\\d\\d)(\\d\\d)", spec)
     if m:
         time = Time.fromtimestamp(int(m.group(1)))
         plus = Plus(hours = int(m.group(2)), minutes = int(m.group(3)))
         return time.astimezone(TimeZone(plus))
-    else:
-        logg.warning("unknown time desc: %s", line)
+    m = re.match("(\\d\\d\\d\\d\\d+) *([+-]\\d\\d)(\\d\\d)", spec)
+    if m:
+        time = Time.fromtimestamp(int(m.group(1)))
+        plus = Plus(hours = int(m.group(2)), minutes = int(m.group(3)))
+        return time.astimezone(TimeZone(plus))
+    m = re.match("(\\d\\d\\d\\d)-(\\d\\d)-(\\d\\d)[T.](\\d\\d):(\\d\\d):(\\d\\d) *([+-]\\d\\d):?(\\d\\d)", spec)
+    if m:
+        time = Time(int(m.group(1)), int(m.group(2)), int(m.group(3)), int(m.group(4)), int(m.group(5)), int(m.group(6)))
+        plus = Plus(hours = int(m.group(7)), minutes = int(m.group(8)))
+        return time.astimezone(TimeZone(plus))
+    logg.warning("unknown time desc: %s", spec)
     return None
+
+def with_time_from(spec: str) -> Time:
+    time = time_from(spec)
+    if time is None:
+        raise ValueError(F"not a time spec: {spec}")
+    return time
 
 def filemarks_from(change: str) -> Dict[str, str]:
     marks = {}
@@ -131,7 +151,7 @@ def commit_from(blob: Blob) -> Commit:
                 logg.debug("?  %s", line)
             else:
                 logg.warning("?? %s", line)
-    return Commit(blob, merges, changes, author, committer, time_from(committer or author))
+    return Commit(blob, merges, changes, author, committer, with_time_from(committer or author))
 
 def run(files: List[str]) -> None:
     loaded = []
@@ -225,8 +245,8 @@ def run(files: List[str]) -> None:
        base = 10000
     if len(blobs) >= 10000:
        base = 100000
-    imports = []
-    newmarks = OrderedDict()
+    imports: List[Import] = []
+    newmarks: Dict[str, NewMark] = OrderedDict()
     for ref in sorted(updates, key=lambda x: updates[x].time):
         update = updates[ref]
         logg.info("commit %s @ %s", ref, update.time)
@@ -251,14 +271,19 @@ def run(files: List[str]) -> None:
         imp = Import(blob, blob.command, newnum, update.time)
         imports += [ imp ]
     logg.log(NOTE, "loaded %s blobs, generated %s blobs", len(blobs), len(imports))
-    for ref, newnum in newmarks.items():
-        logg.log(HINT, "     %s -> %s", ref, newnum)
-    if OUTPUT:
-        out = open(OUTPUT, "w")
-    else:
+    for ref, newmark in newmarks.items():
+        logg.log(HINT, "     %s -> %s", ref, newmark)
+    if not OUTPUT:
         out = sys.stdout
-    oldmark = ""
+    else: 
+        out = open(OUTPUT, "w")
+    # start generating the fast-import stream
+    oldest = time_from(DATE)
+    oldmark = HEAD
     for imp in imports:
+        time = imp.time
+        if oldest and time <= oldest:
+            continue
         blob = imp.blob
         frok = blob.fromfile.mark
         if blob.command == "commit":
@@ -301,13 +326,13 @@ def update_commit(data: str, frok: str, marks: Dict[str, NewMark], newfrom: str 
                 continue
             if line.startswith("from :"):
                 oldfrom = line[len("from "):].strip()
-                if newfrom:
-                   lines += ["from "+newfrom]
+                if newfrom.strip():
+                   lines += ["from "+newfrom.strip()]
                    donemark = True
                    oldref = frok+oldfrom
                    if oldref in marks:
                        newmark = marks[oldref].newmark
-                       if newmark != newfrom and MERGES:
+                       if newmark != newfrom.strip() and MERGES:
                            lines += ["merge "+newmark]
                 continue
             if line.startswith("merge :"):
@@ -353,20 +378,20 @@ def update_commit(data: str, frok: str, marks: Dict[str, NewMark], newfrom: str 
                skipover = 0
             if line.startswith("from :"):
                 oldfrom = line[len("from "):].strip()
-                if newfrom:
-                   lines += ["from "+newfrom]
+                if newfrom.strip():
+                   lines += ["from "+newfrom.strip()]
                    donemark = True
                    oldref = frok+oldfrom
                    if oldref in marks:
                        newmark = marks[oldref].newmark
-                       if newmark != newfrom and MERGES:
+                       if newmark != newfrom.strip() and MERGES:
                            lines += ["merge "+newmark]
                 continue
             if line.startswith("merge :"):
                 continue
             if line and line[1:].startswith(" 100"):
-                if newfrom and not donemark:
-                   lines += ["from "+newfrom]
+                if newfrom.strip() and not donemark:
+                   lines += ["from "+newfrom.strip()]
                    donemark = True
                 m = re.match("(\\S) (\\d+) (\\S+) (.*)", line)
                 if m:
@@ -425,6 +450,20 @@ def gitconfig_user() -> str:
         return "%s <%s>" % (uname, email)
     return ""
 
+def git_last_head(repo: str) -> str:
+    cmd = F"{GIT} --no-pager rev-parse HEAD"
+    return check_output(cmd, cwd=fs.abspath(repo), shell=True).decode("utf-8")
+
+def git_last_date(repo: str) -> str:
+    cmd = F"{GIT} --no-pager show -s --format=%cI HEAD"
+    return check_output(cmd, cwd=fs.abspath(repo), shell=True).decode("utf-8")
+
+def git_fast_import(repo: str, fastexport: str) -> str:
+    exportfile = fs.abspath(fastexport)
+    cmd = F"cat '{exportfile}' | {GIT} --no-pager fast-import"
+    return check_output(cmd, cwd=fs.abspath(repo), shell=True).decode("utf-8")
+
+
 if __name__ == "__main__":
     from configparser import ConfigParser
     from optparse import OptionParser
@@ -432,12 +471,20 @@ if __name__ == "__main__":
     cmdline.formatter.max_help_position = 33
     cmdline.add_option("-v", "--verbose", action="count", default=0,
                        help="increase logging level")
-    cmdline.add_option("-H", "--history", action="store_true", default=False,
+    cmdline.add_option("-L", "--historylog", action="store_true", default=False,
                        help="log the generated history (for checking)")
     cmdline.add_option("-F", "--historyfile", metavar="F", default="",
                        help="put the generated history into a file")
     cmdline.add_option("-S", "--subdir", metavar="N", default="",
                        help="rename files to be in subdir")
+    cmdline.add_option("-H", "--head", metavar="ID", default="",
+                       help="start adding import to this head")
+    cmdline.add_option("-D", "--date", metavar="ID", default="",
+                       help="start adding import after this date")
+    cmdline.add_option("-i", "--into", metavar="DIR",
+                       help="want to import to that target git workspace")
+    cmdline.add_option("--import", dest="imports", action="store_true", default=False,
+                       help="and import --into=DIR from --output=FILE right away")
     cmdline.add_option("-c", "--committer", metavar="mail", default="",
                        help="defaults to author from ~/.gitconfig")
     cmdline.add_option("-s", "--skip", metavar="author*", action="append", default=[],
@@ -452,6 +499,8 @@ if __name__ == "__main__":
                        help="generate into file instead of stdout")
     opt, args = cmdline.parse_args()
     basicConfig(level = ERROR - 5 * opt.verbose)
+    HEAD = opt.head
+    DATE = opt.date
     SUBDIR = opt.subdir
     MERGES = opt.merges
     BRANCH = opt.branch
@@ -461,8 +510,16 @@ if __name__ == "__main__":
     COMMITTER = opt.committer
     if not COMMITTER:
        COMMITTER = gitconfig_user()
+    if opt.into:
+        HEAD = git_last_head(opt.into)
+        DATE = git_last_date(opt.into)
+        if opt.imports:
+            if not OUTPUT:
+                OUTPUT=fs.normpath(opt.into) + ".fi"
     run(args)
-    if opt.history:
+    if opt.imports:
+        git_fast_import(opt.into, OUTPUT)
+    if opt.historylog or opt.historyfile:
         if opt.historyfile:
             with open(opt.historyfile, "w") as hfile:
                 for hist in reversed(HISTORY):
