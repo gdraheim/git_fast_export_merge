@@ -3,13 +3,13 @@
 __copyright__ = "(C) 2017-2024 Guido Draheim, licensed under the Apache License 2.0"""
 __version__ = "1.6.3321"
 
-from typing import Optional, Any
+from typing import Optional, Any, List, Union, Iterator
 
 from subprocess import check_output
 from unittest import TestCase, TestSuite, TextTestRunner
 import os.path as fs
 import shutil
-import os, sys
+import os, sys, re
 import inspect
 from time import sleep
 from fnmatch import fnmatchcase as fnmatch
@@ -37,6 +37,26 @@ def get_caller_name() -> str:
 def get_caller_caller_name() -> str:
     frame = inspect.currentframe().f_back.f_back.f_back  # type: ignore
     return frame.f_code.co_name  # type: ignore
+
+
+def _lines(lines: Union[str, List[str]]) -> List[str]:
+    if isinstance(lines, str):
+        xlines = lines.split("\n")
+        if len(xlines) and xlines[-1] == "":
+            xlines = xlines[:-1]
+        return xlines
+    return lines
+def lines(text: Union[str, List[str]]) -> List[str]:
+    lines = []
+    for line in _lines(text):
+        lines.append(line.rstrip())
+    return lines
+def grep(pattern: str, lines: Union[str, List[str]]) -> Iterator[str]:
+    for line in _lines(lines):
+        if re.search(pattern, line.rstrip()):
+            yield line.rstrip()
+def greps(lines: Union[str, List[str]], pattern: str) -> List[str]:
+    return list(grep(pattern, lines))
 
 class GitExportMergeTest(TestCase):
     def caller_testname(self) -> str:
@@ -111,6 +131,9 @@ class GitExportMergeTest(TestCase):
         logg.debug("out = %s", out)
         out = sh(F"{GIT} {RUN} log", cwd=N)
         logg.debug("out = %s", out)
+        self.assertTrue(greps(out, "hello-A"))
+        self.assertTrue(greps(out, "hello-B"))
+        self.assertFalse(greps(out, "license"))
         self.rm_testdir()
     def test_2000(self) -> None:
         tmp = self.testdir()
@@ -166,6 +189,9 @@ class GitExportMergeTest(TestCase):
         logg.debug("out = %s", out)
         out = sh(F"{GIT} {RUN} log", cwd=N)
         logg.debug("out = %s", out)
+        self.assertTrue(greps(out, "hello-A"))
+        self.assertTrue(greps(out, "hello-B"))
+        self.assertTrue(greps(out, "license"))
         self.rm_testdir()
 
 if __name__ == "__main__":
