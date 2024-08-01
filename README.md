@@ -22,3 +22,20 @@ And the combined archive can be imported: `cd libbcode; cat ../libcode.fi | git 
 An example can be found here: https://github.com/gdraheim/tabtotext - extracted from
 https://github.com/gdraheim/timetrack-odoo and two report-tool archives.
 
+## updating a target repo
+
+The basic execution assumes that you want to split off some files from a repo. So the
+target repository is fresh and new.
+
+If you want to add patches later then you need to provide two pieces of information:
+the commit-hash of the target HEAD and the minimum DATE to consider from the inputs.
+
+If you have a target repo then you can get that information like this:
+
+* `git --no-pager rev-parse HEAD` # hash-of-commit
+* `git --no-pager show -s --format=%cI HEAD` # date-of-commit
+
+Provide these as `--head=hash-of-commit --date=date-of-commit`
+
+If you say `--into=./path/to/workspace` then the tool will run these commands itself.
+
