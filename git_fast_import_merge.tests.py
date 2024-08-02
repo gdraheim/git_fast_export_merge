@@ -182,7 +182,8 @@ def loadworkspace(workspace: str) -> Dict[str, str]:
         for name in filenames:
             filename = fs.join(dirpath, name)
             logg.fatal("load %s", filename)
-            files[name] = decodes(open(filename).read())
+            workname = filename[len(workspace)+1:]
+            files[workname] = decodes(open(filename).read())
     return files
 
 def get_caller_name() -> str:
@@ -290,8 +291,10 @@ class ImportMergeTest(TestCase):
         self.assertTrue(greplines(log.out, "hello-B", "hello-A"))
         self.assertFalse(greplines(log.out, "license"))
         self.assertFalse(greplines(log.out, "Merge:"))
-        out = sh(F"{git} checkout HEAD", cwd=N)
-        files = loadworkspace(N)
+        #
+        M= fs.join(tmp, "M")
+        out = sh(F"{git} clone --local N M", cwd=tmp)
+        files = loadworkspace(M)
         wants = {"world.txt": "hello\n"}
         self.assertEqual(wants, files)
         self.rm_testdir()
@@ -361,6 +364,12 @@ class ImportMergeTest(TestCase):
         self.assertTrue(greplines(log.out, "hello-B", "hello-A"))
         self.assertFalse(greplines(log.out, "license"))
         self.assertFalse(greplines(log.out, "Merge:"))
+        #
+        M= fs.join(tmp, "M")
+        out = sh(F"{git} clone --local N M", cwd=tmp)
+        files = loadworkspace(M)
+        wants = {"world.txt": "again\n"}
+        self.assertEqual(wants, files)
         self.rm_testdir()
 
     def test_120(self) -> None:
@@ -428,6 +437,12 @@ class ImportMergeTest(TestCase):
         self.assertTrue(greplines(log.out, "hello-B", "hello-A"))
         self.assertFalse(greplines(log.out, "license"))
         self.assertTrue(greplines(log.out, "Merge:"))
+        #
+        M= fs.join(tmp, "M")
+        out = sh(F"{git} clone --local N M", cwd=tmp)
+        files = loadworkspace(M)
+        wants = {"world.txt": "again\n"}
+        self.assertEqual(wants, files)
         self.rm_testdir()
 
     def test_200(self) -> None:
@@ -496,6 +511,12 @@ class ImportMergeTest(TestCase):
         self.assertTrue(greplines(log.out, "hello-B", "hello-A", "license"))
         self.assertTrue(greplines(log.out, "license"))
         self.assertFalse(greplines(log.out, "Merge:"))
+        #
+        M= fs.join(tmp, "M")
+        out = sh(F"{git} clone --local N M", cwd=tmp)
+        files = loadworkspace(M)
+        wants = {"world.txt": "hello\n", 'LICENSE': 'OK\n'}
+        self.assertEqual(wants, files)
         self.rm_testdir()
 
     def test_210(self) -> None:
@@ -566,11 +587,22 @@ class ImportMergeTest(TestCase):
         std = sh(F"{git} fast-import < ../N.fi", cwd=N)
         self.assertTrue(greplines(std.out, ""))
         self.assertTrue(greplines(std.err, "commits: *3"))
+        std = sh(F"{git} rev-parse HEAD", cwd=N)
+        self.assertTrue(greplines(std.out, "..........."))
+        newhead = std.out.strip()
+        logg.info("--- new HEAD %s", newhead)
+        self.assertNotEqual(head, newhead)
         log = sh(F"{git} log --graph", cwd=N)
         logg.log(SHOWGRAPH, ">>>\n%s", log.out)
         self.assertTrue(greplines(log.out, "hello-B", "hello-A", "license"))
         self.assertTrue(greplines(log.out, "license"))
         self.assertFalse(greplines(log.out, "Merge:"))
+        #
+        M= fs.join(tmp, "M")
+        out = sh(F"{git} clone --local N M", cwd=tmp)
+        files = loadworkspace(M)
+        wants = {"world.txt": "again\n", 'LICENSE': 'OK\n'}
+        self.assertEqual(wants, files)
         self.rm_testdir()
 
     def test_220(self) -> None:
@@ -642,11 +674,22 @@ class ImportMergeTest(TestCase):
         std = sh(F"{git} fast-import < ../N.fi", cwd=N)
         self.assertTrue(greplines(std.out, ""))
         self.assertTrue(greplines(std.err, "commits: *3"))
+        std = sh(F"{git} rev-parse HEAD", cwd=N)
+        self.assertTrue(greplines(std.out, "..........."))
+        newhead = std.out.strip()
+        logg.info("--- new HEAD %s", newhead)
+        self.assertNotEqual(head, newhead)
         log = sh(F"{git} log --graph", cwd=N)
         logg.log(SHOWGRAPH, ">>>\n%s", log.out)
         self.assertTrue(greplines(log.out, "hello-B", "hello-A", "license"))
         self.assertTrue(greplines(log.out, "license"))
         self.assertTrue(greplines(log.out, "Merge:"))
+        #
+        M= fs.join(tmp, "M")
+        out = sh(F"{git} clone --local N M", cwd=tmp)
+        files = loadworkspace(M)
+        wants = {"world.txt": "again\n", 'LICENSE': 'OK\n'}
+        self.assertEqual(wants, files)
         self.rm_testdir()
 
 
