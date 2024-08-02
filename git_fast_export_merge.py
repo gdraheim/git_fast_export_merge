@@ -6,6 +6,10 @@ archive file for 'git fast-import' ordering the changes by date. Optionally,
 the output archive file which makes for a history as coming from multiple branches.
 - (but no actual parallel development please)."""
 
+
+__copyright__ = "(C) 2023-2024 Guido Draheim, licensed under the Apache License 2.0"""
+__version__ = "1.0.1315"
+
 from typing import List, NamedTuple, Optional, Dict
 from logging import getLogger, basicConfig, addLevelName, ERROR, WARNING, INFO, DEBUG
 from datetime import datetime as Time
