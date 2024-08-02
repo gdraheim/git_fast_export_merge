@@ -181,7 +181,7 @@ def loadworkspace(workspace: str) -> Dict[str, str]:
             continue
         for name in filenames:
             filename = fs.join(dirpath, name)
-            logg.fatal("load %s", filename)
+            logg.log(EXEC, "  wc %s", filename)
             workname = filename[len(workspace)+1:]
             files[workname] = decodes(open(filename).read())
     return files
@@ -235,6 +235,7 @@ class ImportMergeTest(TestCase):
         return newdir
 
     def test_100(self) -> None:
+        """ import to empty repo"""
         py = F"{PYTHON}"
         git = F"{GIT} {RUN}"
         tmp = self.testdir()
@@ -300,6 +301,7 @@ class ImportMergeTest(TestCase):
         self.rm_testdir()
 
     def test_110(self) -> None:
+        """ import to empty repo - with third commit"""
         py = F"{PYTHON}"
         git = F"{GIT} {RUN}"
         tmp = self.testdir()
@@ -373,6 +375,7 @@ class ImportMergeTest(TestCase):
         self.rm_testdir()
 
     def test_120(self) -> None:
+        """ import to empty repo - with third commit - show as --merge"""
         py = F"{PYTHON}"
         git = F"{GIT} {RUN}"
         tmp = self.testdir()
@@ -444,8 +447,82 @@ class ImportMergeTest(TestCase):
         wants = {"world.txt": "again\n"}
         self.assertEqual(wants, files)
         self.rm_testdir()
+    def test_130(self) -> None:
+        """ import to empty repo - rename into subdir - show as --merge"""
+        py = F"{PYTHON}"
+        git = F"{GIT} {RUN}"
+        tmp = self.testdir()
+        A = fs.join(tmp, "A")
+        std = sh(F"{git} init -b main A", cwd=tmp)
+        self.assertTrue(greplines(std.out, "Initialized empty Git repository"))
+        std = sh(F"echo 'hello' > world.txt", cwd=A)
+        self.assertTrue(greplines(std.out, ""))
+        std = sh(F"{git} add world.txt", cwd=A)
+        self.assertTrue(greplines(std.out, ""))
+        std = sh(F"{git} commit -m hello-A world.txt", cwd=A)
+        self.assertTrue(greplines(std.out, "main .* hello-A"))
+        std = sh(F"{git} log", cwd=A)
+        self.assertTrue(greplines(std.out, "commit ", " hello-A"))
+        #
+        sleep(2)
+        #
+        B = fs.join(tmp, "B")
+        std = sh(F"{git} init -b main B", cwd=tmp)
+        self.assertTrue(greplines(std.out, "Initialized empty Git repository"))
+        std = sh(F"echo 'hello' > world.txt", cwd=B)
+        self.assertTrue(greplines(std.out, ""))
+        std = sh(F"{git} add world.txt", cwd=B)
+        self.assertTrue(greplines(std.out, ""))
+        std = sh(F"{git} commit -m hello-B world.txt", cwd=B)
+        self.assertTrue(greplines(std.out, "main .* hello-B"))
+        std = sh(F"{git} log", cwd=B)
+        self.assertTrue(greplines(std.out, "commit ", " hello-B"))
+        #
+        sleep(2)
+        #
+        std = sh(F"echo 'again' > world.txt", cwd=A)
+        self.assertTrue(greplines(std.out, ""))
+        std = sh(F"{git} commit -m again world.txt", cwd=A)
+        self.assertTrue(greplines(std.out, "main .* again"))
+        #
+        std = sh(F"{git} fast-export HEAD > ../A.fi", cwd=A)
+        self.assertTrue(greplines(std.out, ""))
+        catA = sh_cat(F"A.fi", cwd=tmp)
+        self.assertTrue(greplines(catA.out, "hello-A"))
+        std = sh(F"{git} fast-export HEAD > ../B.fi", cwd=B)
+        self.assertTrue(greplines(std.out, ""))
+        catB = sh_cat(F"B.fi", cwd=tmp)
+        self.assertTrue(greplines(catB.out, "hello-B"))
+        self.assertNotEqual(greplines(catA.out, "committer .*"),
+                            greplines(catB.out, "committer .*"))
+        #
+        N = fs.join(tmp, "N")
+        merge = fs.abspath(MERGE)
+        std = sh(F"{git} init -b main N", cwd=tmp)
+        self.assertTrue(greplines(std.out, "Initialized empty"))
+        std = sh(F"{py} {merge} A.fi B.fi -o N.fi --merge --subdir travel", cwd=tmp)
+        self.assertTrue(greplines(std.out, ""))
+        catN = sh_cat(F"N.fi", cwd=tmp)
+        self.assertTrue(greplines(catN.out, "hello-A", "hello-B"))
+        self.assertTrue(greplines(catN.out, "merge :"))
+        std = sh(F"{git} fast-import < ../N.fi", cwd=N)
+        self.assertTrue(greplines(std.err, "commits: *3"))
+        self.assertTrue(greplines(std.out, ""))
+        log = sh(F"{git} log --graph", cwd=N)
+        logg.log(SHOWGRAPH, ">>>\n%s", log.out)
+        self.assertTrue(greplines(log.out, "hello-B", "hello-A"))
+        self.assertFalse(greplines(log.out, "license"))
+        self.assertTrue(greplines(log.out, "Merge:"))
+        #
+        M= fs.join(tmp, "M")
+        out = sh(F"{git} clone --local N M", cwd=tmp)
+        files = loadworkspace(M)
+        wants = {"travel/world.txt": "again\n"}
+        self.assertEqual(wants, files)
+        self.rm_testdir()
 
     def test_200(self) -> None:
+        """ import to non-empty repo (GitHub likes to setup LICENSE)"""
         py = F"{PYTHON}"
         git = F"{GIT} {RUN}"
         tmp = self.testdir()
@@ -520,6 +597,7 @@ class ImportMergeTest(TestCase):
         self.rm_testdir()
 
     def test_210(self) -> None:
+        """ import to non-empty repo - with third commit"""
         py = F"{PYTHON}"
         git = F"{GIT} {RUN}"
         tmp = self.testdir()
@@ -606,6 +684,7 @@ class ImportMergeTest(TestCase):
         self.rm_testdir()
 
     def test_220(self) -> None:
+        """ import to non-empty repo - with third commit - show as --merge"""
         py = F"{PYTHON}"
         git = F"{GIT} {RUN}"
         tmp = self.testdir()
@@ -689,6 +768,94 @@ class ImportMergeTest(TestCase):
         out = sh(F"{git} clone --local N M", cwd=tmp)
         files = loadworkspace(M)
         wants = {"world.txt": "again\n", 'LICENSE': 'OK\n'}
+        self.assertEqual(wants, files)
+        self.rm_testdir()
+
+    def test_230(self) -> None:
+        """ import to non-empty repo - rename to subdir - show as --merge"""
+        py = F"{PYTHON}"
+        git = F"{GIT} {RUN}"
+        tmp = self.testdir()
+        A = fs.join(tmp, "A")
+        std = sh(F"{git} init -b main A", cwd=tmp)
+        self.assertTrue(greplines(std.out, "Initialized empty Git repository"))
+        std = sh(F"echo 'hello' > world.txt", cwd=A)
+        self.assertTrue(greplines(std.out, ""))
+        std = sh(F"{git} add world.txt", cwd=A)
+        self.assertTrue(greplines(std.out, ""))
+        std = sh(F"{git} commit -m hello-A world.txt", cwd=A)
+        self.assertTrue(greplines(std.out, "main .* hello-A"))
+        std = sh(F"{git} log", cwd=A)
+        self.assertTrue(greplines(std.out, "commit ", " hello-A"))
+        #
+        sleep(2)
+        #
+        B = fs.join(tmp, "B")
+        std = sh(F"{git} init -b main B", cwd=tmp)
+        self.assertTrue(greplines(std.out, "Initialized empty Git repository"))
+        std = sh(F"echo 'hello' > world.txt", cwd=B)
+        self.assertTrue(greplines(std.out, ""))
+        std = sh(F"{git} add world.txt", cwd=B)
+        self.assertTrue(greplines(std.out, ""))
+        std = sh(F"{git} commit -m hello-B world.txt", cwd=B)
+        self.assertTrue(greplines(std.out, "main .* hello-B"))
+        std = sh(F"{git} log", cwd=B)
+        self.assertTrue(greplines(std.out, "commit ", " hello-B"))
+        #
+        sleep(2)
+        #
+        std = sh(F"echo 'again' > world.txt", cwd=A)
+        self.assertTrue(greplines(std.out, ""))
+        std = sh(F"{git} commit -m again world.txt", cwd=A)
+        self.assertTrue(greplines(std.out, "main .* again"))
+        #
+        std = sh(F"{git} fast-export HEAD > ../A.fi", cwd=A)
+        self.assertTrue(greplines(std.out, ""))
+        catA = sh_cat(F"A.fi", cwd=tmp)
+        self.assertTrue(greplines(catA.out, "hello-A"))
+        std = sh(F"{git} fast-export HEAD > ../B.fi", cwd=B)
+        self.assertTrue(greplines(std.out, ""))
+        catB = sh_cat("B.fi", cwd=tmp)
+        self.assertTrue(greplines(catB.out, "hello-B"))
+        #
+        merge = fs.abspath(MERGE)
+        N = fs.join(tmp, "N")
+        std = sh(F"{git} init -b main N", cwd=tmp)
+        self.assertTrue(greplines(std.out, "Initialized empty"))
+        std = sh(F"echo OK > LICENSE", cwd=N)
+        self.assertTrue(greplines(std.out, ""))
+        std = sh(F"{git} add LICENSE", cwd=N)
+        self.assertTrue(greplines(std.out, ""))
+        std = sh(F"{git} commit -m license LICENSE", cwd=N)
+        self.assertTrue(greplines(std.out, "main .* license"))
+        std = sh(F"{git} rev-parse HEAD", cwd=N)
+        self.assertTrue(greplines(std.out, "..........."))
+        head = std.out.strip()
+        logg.info("- using HEAD %s", head)
+        std = sh(
+            F"{py} {merge} A.fi B.fi -o N.fi -H {head} -L --merge --subdir travel", cwd=tmp)
+        self.assertTrue(greplines(std.out, ""))
+        self.assertTrue(greplines(std.err, ""))
+        catN = sh_cat("N.fi", cwd=tmp)
+        self.assertTrue(greplines(catN.out, "hello-A", "hello-B"))
+        std = sh(F"{git} fast-import < ../N.fi", cwd=N)
+        self.assertTrue(greplines(std.out, ""))
+        self.assertTrue(greplines(std.err, "commits: *3"))
+        std = sh(F"{git} rev-parse HEAD", cwd=N)
+        self.assertTrue(greplines(std.out, "..........."))
+        newhead = std.out.strip()
+        logg.info("--- new HEAD %s", newhead)
+        self.assertNotEqual(head, newhead)
+        log = sh(F"{git} log --graph", cwd=N)
+        logg.log(SHOWGRAPH, ">>>\n%s", log.out)
+        self.assertTrue(greplines(log.out, "hello-B", "hello-A", "license"))
+        self.assertTrue(greplines(log.out, "license"))
+        self.assertTrue(greplines(log.out, "Merge:"))
+        #
+        M= fs.join(tmp, "M")
+        out = sh(F"{git} clone --local N M", cwd=tmp)
+        files = loadworkspace(M)
+        wants = {"travel/world.txt": "again\n", 'LICENSE': 'OK\n'}
         self.assertEqual(wants, files)
         self.rm_testdir()
 
