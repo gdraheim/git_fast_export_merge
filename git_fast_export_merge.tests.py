@@ -9,7 +9,9 @@ from subprocess import check_output, Popen, PIPE, CalledProcessError
 from unittest import TestCase, TestSuite, TextTestRunner
 import os.path as fs
 import shutil
-import os, sys, re
+import os
+import sys
+import re
 import inspect
 from time import sleep
 from fnmatch import fnmatchcase as fnmatch
@@ -34,28 +36,36 @@ RUN = "--no-pager"
 PYTHON = "python3"
 MERGE = "git_fast_export_merge.py"
 
-def sx__(cmd: str, cwd: Optional[str] = None, shell: bool = True, env: Mapping[str, str] ={"LANG":"C"}, **args: Any) -> str:
+
+def sx__(cmd: str, cwd: Optional[str] = None, shell: bool = True, env: Mapping[str, str] = {"LANG": "C"}, **args: Any) -> str:
     try:
         return sh__(cmd, cwd=cwd, shell=shell, env=env, **args)
     except Exception as e:
         logg.debug("sh failed: %s", cmd)
         return ""
-def sh__(cmd: str, cwd: Optional[str] = None, shell: bool = True, env: Mapping[str, str]={"LANG":"C"}, **args: Any) -> str:
+
+
+def sh__(cmd: str, cwd: Optional[str] = None, shell: bool = True, env: Mapping[str, str] = {"LANG": "C"}, **args: Any) -> str:
     logg.debug("sh %s", cmd)
     return decodes(check_output(cmd, cwd=cwd, shell=shell, env=env, **args))
+
 
 class Run(NamedTuple):
     out: str
     err: str
     code: int
-def sh(cmd: Union[str, List[str]], cwd: Optional[str] = None, shell: Optional[bool] = None, 
-       input: Optional[str] = None, env: Mapping[str, str]={"LANG":"C"}) -> Run:
+
+
+def sh(cmd: Union[str, List[str]], cwd: Optional[str] = None, shell: Optional[bool] = None,
+       input: Optional[str] = None, env: Mapping[str, str] = {"LANG": "C"}) -> Run:
     std = run(cmd, cwd, shell, input, env)
     if std.code:
         raise CalledProcessError(std.code, cmd, std.out, std.err)
     return std
-def run(cmd: Union[str, List[str]], cwd: Optional[str] = None, shell: Optional[bool] = None, 
-       input: Optional[str] = None, env: Mapping[str, str]={"LANG":"C"}) -> Run:
+
+
+def run(cmd: Union[str, List[str]], cwd: Optional[str] = None, shell: Optional[bool] = None,
+        input: Optional[str] = None, env: Mapping[str, str] = {"LANG": "C"}) -> Run:
     if isinstance(cmd, str):
         logg.log(EXEC, ": %s", cmd)
         shell = True if shell is None else shell
@@ -63,10 +73,12 @@ def run(cmd: Union[str, List[str]], cwd: Optional[str] = None, shell: Optional[b
         logg.log(EXEC, ": %s", " ".join(["'%s'" % item for item in cmd]))
         shell = False if shell is None else shell
     if input is not None:
-        run = Popen(cmd, cwd=cwd, shell=shell, stdout=PIPE, stderr=PIPE, stdin=PIPE, env=env)
+        run = Popen(cmd, cwd=cwd, shell=shell, stdout=PIPE,
+                    stderr=PIPE, stdin=PIPE, env=env)
         out, err = run.communicate(input.encode("utf-8"))
     else:
-        run = Popen(cmd, cwd=cwd, shell=shell, stdout=PIPE, stderr=PIPE, env=env)
+        run = Popen(cmd, cwd=cwd, shell=shell,
+                    stdout=PIPE, stderr=PIPE, env=env)
         out, err = run.communicate()
     text_out = decodes(out)
     text_err = decodes(err)
@@ -76,8 +88,11 @@ def run(cmd: Union[str, List[str]], cwd: Optional[str] = None, shell: Optional[b
     if run.returncode:
         logg.debug("return = %s", run.returncode)
     return Run(text_out, text_err, run.returncode)
+
+
 def decodes(text: Union[bytes, str]) -> str:
-    if text is None: return None
+    if text is None:
+        return None
     if isinstance(text, bytes):
         encoded = sys.getdefaultencoding()
         if encoded in ["ascii"]:
@@ -87,6 +102,8 @@ def decodes(text: Union[bytes, str]) -> str:
         except:
             return text.decode("latin-1")
     return text
+
+
 def sh_cat(filename: str, default: str = NIX, cwd: str = NIX) -> Run:
     if cwd:
         filepath = fs.join(cwd, filename)
@@ -98,9 +115,11 @@ def sh_cat(filename: str, default: str = NIX, cwd: str = NIX) -> Run:
     else:
         text = open(filepath).read()
         lines = text.splitlines()
-        logg.log(EXEC, "  cat %s  # [%s bytes] [%s lines]", filename, len(text), len(lines))
+        logg.log(EXEC, "  cat %s  # [%s bytes] [%s lines]", filename, len(
+            text), len(lines))
         logg.debug("%s", lines)
         return Run(text, "", 0)
+
 
 def _lines(lines: Union[str, List[str]]) -> List[str]:
     if isinstance(lines, str):
@@ -109,17 +128,25 @@ def _lines(lines: Union[str, List[str]]) -> List[str]:
             xlines = xlines[:-1]
         return xlines
     return lines
+
+
 def lines(text: Union[str, List[str]]) -> List[str]:
     lines = []
     for line in _lines(text):
         lines.append(line.rstrip())
     return lines
+
+
 def grep(pattern: str, lines: Union[str, List[str]]) -> Iterator[str]:
     for line in _lines(lines):
         if re.search(pattern, line.rstrip()):
             yield line.rstrip()
+
+
 def greps(lines: Union[str, List[str]], pattern: str) -> List[str]:
     return list(grep(pattern, lines))
+
+
 def greplines(lines: Union[str, List[str]], *pattern: str) -> List[str]:
     eachline = [line.rstrip() for line in _lines(lines) if line.rstrip()]
     if not pattern:
@@ -140,33 +167,41 @@ def greplines(lines: Union[str, List[str]], *pattern: str) -> List[str]:
         else:
             if re.search(pattern[look], line.rstrip()):
                 found.append(line)
-                look +=1
+                look += 1
                 if look == done:
                     return found
     logg.debug("[?]<< %s", pattern)
     logg.debug("[?]=> %s", eachline)
     return []
 
+
 def get_caller_name() -> str:
     frame = inspect.currentframe().f_back.f_back  # type: ignore
     return frame.f_code.co_name  # type: ignore
+
+
 def get_caller_caller_name() -> str:
     frame = inspect.currentframe().f_back.f_back.f_back  # type: ignore
     return frame.f_code.co_name  # type: ignore
+
 
 class GitExportMergeTest(TestCase):
     def caller_testname(self) -> str:
         name = get_caller_caller_name()
         x1 = name.find("_")
-        if x1 < 0: return name
+        if x1 < 0:
+            return name
         x2 = name.find("_", x1 + 1)
-        if x2 < 0: return name
+        if x2 < 0:
+            return name
         return name[:x2]
+
     def testname(self, suffix: Optional[str] = None) -> str:
         name = self.caller_testname()
         if suffix:
             return name + "_" + suffix
         return name
+
     def testdir(self, testname: Optional[str] = None, keep: bool = False) -> str:
         testname = testname or self.caller_testname()
         newdir = "tmp/tmp." + testname
@@ -177,6 +212,7 @@ class GitExportMergeTest(TestCase):
             logg.log(TMP, "==================== %s", newdir)
             # logg.log(TMP, ".................... %s", newdir)
         return newdir
+
     def rm_testdir(self, testname: Optional[str] = None) -> str:
         testname = testname or self.caller_testname()
         newdir = "tmp/tmp." + testname
@@ -186,11 +222,12 @@ class GitExportMergeTest(TestCase):
             else:
                 logg.log(TMP, "================ KEEP %s", newdir)
         return newdir
+
     def test_100(self) -> None:
         tmp = self.testdir()
         A = fs.join(tmp, "A")
         std = sh(F"{GIT} {RUN} init -b main A", cwd=tmp)
-        self.assertTrue(greplines(std.out,"Initialized empty Git repository"))
+        self.assertTrue(greplines(std.out, "Initialized empty Git repository"))
         std = sh(F"echo 'hello' > world.txt", cwd=A)
         self.assertTrue(greplines(std.out, ""))
         std = sh(F"{GIT} {RUN} add world.txt", cwd=A)
@@ -204,7 +241,7 @@ class GitExportMergeTest(TestCase):
         #
         B = fs.join(tmp, "B")
         std = sh(F"{GIT} {RUN} init -b main B", cwd=tmp)
-        self.assertTrue(greplines(std.out,"Initialized empty Git repository"))
+        self.assertTrue(greplines(std.out, "Initialized empty Git repository"))
         std = sh(F"echo 'hello' > world.txt", cwd=B)
         self.assertTrue(greplines(std.out, ""))
         std = sh(F"{GIT} {RUN} add world.txt", cwd=B)
@@ -222,7 +259,8 @@ class GitExportMergeTest(TestCase):
         self.assertTrue(greplines(std.out, ""))
         catB = sh_cat(F"B.fi", cwd=tmp)
         self.assertTrue(greplines(catB.out, "hello-B"))
-        self.assertNotEqual(greplines(catA.out, "committer .*"), greplines(catB.out, "committer .*"))
+        self.assertNotEqual(greplines(catA.out, "committer .*"),
+                            greplines(catB.out, "committer .*"))
         #
         N = fs.join(tmp, "N")
         merge = fs.abspath(MERGE)
@@ -241,11 +279,12 @@ class GitExportMergeTest(TestCase):
         self.assertFalse(greplines(log.out, "license"))
         self.assertFalse(greplines(log.out, "Merge:"))
         self.rm_testdir()
+
     def test_110(self) -> None:
         tmp = self.testdir()
         A = fs.join(tmp, "A")
         std = sh(F"{GIT} {RUN} init -b main A", cwd=tmp)
-        self.assertTrue(greplines(std.out,"Initialized empty Git repository"))
+        self.assertTrue(greplines(std.out, "Initialized empty Git repository"))
         std = sh(F"echo 'hello' > world.txt", cwd=A)
         self.assertTrue(greplines(std.out, ""))
         std = sh(F"{GIT} {RUN} add world.txt", cwd=A)
@@ -259,7 +298,7 @@ class GitExportMergeTest(TestCase):
         #
         B = fs.join(tmp, "B")
         std = sh(F"{GIT} {RUN} init -b main B", cwd=tmp)
-        self.assertTrue(greplines(std.out,"Initialized empty Git repository"))
+        self.assertTrue(greplines(std.out, "Initialized empty Git repository"))
         std = sh(F"echo 'hello' > world.txt", cwd=B)
         self.assertTrue(greplines(std.out, ""))
         std = sh(F"{GIT} {RUN} add world.txt", cwd=B)
@@ -284,7 +323,8 @@ class GitExportMergeTest(TestCase):
         self.assertTrue(greplines(std.out, ""))
         catB = sh_cat(F"B.fi", cwd=tmp)
         self.assertTrue(greplines(catB.out, "hello-B"))
-        self.assertNotEqual(greplines(catA.out, "committer .*"), greplines(catB.out, "committer .*"))
+        self.assertNotEqual(greplines(catA.out, "committer .*"),
+                            greplines(catB.out, "committer .*"))
         #
         N = fs.join(tmp, "N")
         merge = fs.abspath(MERGE)
@@ -294,7 +334,7 @@ class GitExportMergeTest(TestCase):
         self.assertTrue(greplines(std.out, ""))
         catN = sh_cat(F"N.fi", cwd=tmp)
         self.assertTrue(greplines(catN.out, "hello-A", "hello-B"))
-        self.assertFalse(greplines(catN.out, "merge :")) # !
+        self.assertFalse(greplines(catN.out, "merge :"))  # !
         std = sh(F"{GIT} {RUN} fast-import < ../N.fi", cwd=N)
         self.assertTrue(greplines(std.err, "commits: *3"))
         self.assertTrue(greplines(std.out, ""))
@@ -304,11 +344,12 @@ class GitExportMergeTest(TestCase):
         self.assertFalse(greplines(log.out, "license"))
         self.assertFalse(greplines(log.out, "Merge:"))
         self.rm_testdir()
+
     def test_120(self) -> None:
         tmp = self.testdir()
         A = fs.join(tmp, "A")
         std = sh(F"{GIT} {RUN} init -b main A", cwd=tmp)
-        self.assertTrue(greplines(std.out,"Initialized empty Git repository"))
+        self.assertTrue(greplines(std.out, "Initialized empty Git repository"))
         std = sh(F"echo 'hello' > world.txt", cwd=A)
         self.assertTrue(greplines(std.out, ""))
         std = sh(F"{GIT} {RUN} add world.txt", cwd=A)
@@ -322,7 +363,7 @@ class GitExportMergeTest(TestCase):
         #
         B = fs.join(tmp, "B")
         std = sh(F"{GIT} {RUN} init -b main B", cwd=tmp)
-        self.assertTrue(greplines(std.out,"Initialized empty Git repository"))
+        self.assertTrue(greplines(std.out, "Initialized empty Git repository"))
         std = sh(F"echo 'hello' > world.txt", cwd=B)
         self.assertTrue(greplines(std.out, ""))
         std = sh(F"{GIT} {RUN} add world.txt", cwd=B)
@@ -347,7 +388,8 @@ class GitExportMergeTest(TestCase):
         self.assertTrue(greplines(std.out, ""))
         catB = sh_cat(F"B.fi", cwd=tmp)
         self.assertTrue(greplines(catB.out, "hello-B"))
-        self.assertNotEqual(greplines(catA.out, "committer .*"), greplines(catB.out, "committer .*"))
+        self.assertNotEqual(greplines(catA.out, "committer .*"),
+                            greplines(catB.out, "committer .*"))
         #
         N = fs.join(tmp, "N")
         merge = fs.abspath(MERGE)
@@ -367,11 +409,12 @@ class GitExportMergeTest(TestCase):
         self.assertFalse(greplines(log.out, "license"))
         self.assertTrue(greplines(log.out, "Merge:"))
         self.rm_testdir()
+
     def test_200(self) -> None:
         tmp = self.testdir()
         A = fs.join(tmp, "A")
         std = sh(F"{GIT} {RUN} init -b main A", cwd=tmp)
-        self.assertTrue(greplines(std.out,"Initialized empty Git repository"))
+        self.assertTrue(greplines(std.out, "Initialized empty Git repository"))
         std = sh(F"echo 'hello' > world.txt", cwd=A)
         self.assertTrue(greplines(std.out, ""))
         std = sh(F"{GIT} {RUN} add world.txt", cwd=A)
@@ -385,7 +428,7 @@ class GitExportMergeTest(TestCase):
         #
         B = fs.join(tmp, "B")
         std = sh(F"{GIT} {RUN} init -b main B", cwd=tmp)
-        self.assertTrue(greplines(std.out,"Initialized empty Git repository"))
+        self.assertTrue(greplines(std.out, "Initialized empty Git repository"))
         std = sh(F"echo 'hello' > world.txt", cwd=B)
         self.assertTrue(greplines(std.out, ""))
         std = sh(F"{GIT} {RUN} add world.txt", cwd=B)
@@ -415,7 +458,7 @@ class GitExportMergeTest(TestCase):
         std = sh(F"{GIT} {RUN} commit -m license LICENSE", cwd=N)
         self.assertTrue(greplines(std.out, "main .* license"))
         std = sh(F"{GIT} {RUN} rev-parse HEAD", cwd=N)
-        self.assertTrue(greplines(std.out,"..........."))
+        self.assertTrue(greplines(std.out, "..........."))
         head = std.out.strip()
         logg.info("- using HEAD %s", head)
         std = sh(F"{PYTHON} {merge} A.fi B.fi -o N.fi -H {head} -L", cwd=tmp)
@@ -432,11 +475,12 @@ class GitExportMergeTest(TestCase):
         self.assertTrue(greplines(log.out, "license"))
         self.assertFalse(greplines(log.out, "Merge:"))
         self.rm_testdir()
+
     def test_210(self) -> None:
         tmp = self.testdir()
         A = fs.join(tmp, "A")
         std = sh(F"{GIT} {RUN} init -b main A", cwd=tmp)
-        self.assertTrue(greplines(std.out,"Initialized empty Git repository"))
+        self.assertTrue(greplines(std.out, "Initialized empty Git repository"))
         std = sh(F"echo 'hello' > world.txt", cwd=A)
         self.assertTrue(greplines(std.out, ""))
         std = sh(F"{GIT} {RUN} add world.txt", cwd=A)
@@ -450,7 +494,7 @@ class GitExportMergeTest(TestCase):
         #
         B = fs.join(tmp, "B")
         std = sh(F"{GIT} {RUN} init -b main B", cwd=tmp)
-        self.assertTrue(greplines(std.out,"Initialized empty Git repository"))
+        self.assertTrue(greplines(std.out, "Initialized empty Git repository"))
         std = sh(F"echo 'hello' > world.txt", cwd=B)
         self.assertTrue(greplines(std.out, ""))
         std = sh(F"{GIT} {RUN} add world.txt", cwd=B)
@@ -487,7 +531,7 @@ class GitExportMergeTest(TestCase):
         std = sh(F"{GIT} {RUN} commit -m license LICENSE", cwd=N)
         self.assertTrue(greplines(std.out, "main .* license"))
         std = sh(F"{GIT} {RUN} rev-parse HEAD", cwd=N)
-        self.assertTrue(greplines(std.out,"..........."))
+        self.assertTrue(greplines(std.out, "..........."))
         head = std.out.strip()
         logg.info("- using HEAD %s", head)
         std = sh(F"{PYTHON} {merge} A.fi B.fi -o N.fi -H {head} -L", cwd=tmp)
@@ -504,11 +548,12 @@ class GitExportMergeTest(TestCase):
         self.assertTrue(greplines(log.out, "license"))
         self.assertFalse(greplines(log.out, "Merge:"))
         self.rm_testdir()
+
     def test_220(self) -> None:
         tmp = self.testdir()
         A = fs.join(tmp, "A")
         std = sh(F"{GIT} {RUN} init -b main A", cwd=tmp)
-        self.assertTrue(greplines(std.out,"Initialized empty Git repository"))
+        self.assertTrue(greplines(std.out, "Initialized empty Git repository"))
         std = sh(F"echo 'hello' > world.txt", cwd=A)
         self.assertTrue(greplines(std.out, ""))
         std = sh(F"{GIT} {RUN} add world.txt", cwd=A)
@@ -522,7 +567,7 @@ class GitExportMergeTest(TestCase):
         #
         B = fs.join(tmp, "B")
         std = sh(F"{GIT} {RUN} init -b main B", cwd=tmp)
-        self.assertTrue(greplines(std.out,"Initialized empty Git repository"))
+        self.assertTrue(greplines(std.out, "Initialized empty Git repository"))
         std = sh(F"echo 'hello' > world.txt", cwd=B)
         self.assertTrue(greplines(std.out, ""))
         std = sh(F"{GIT} {RUN} add world.txt", cwd=B)
@@ -559,10 +604,11 @@ class GitExportMergeTest(TestCase):
         std = sh(F"{GIT} {RUN} commit -m license LICENSE", cwd=N)
         self.assertTrue(greplines(std.out, "main .* license"))
         std = sh(F"{GIT} {RUN} rev-parse HEAD", cwd=N)
-        self.assertTrue(greplines(std.out,"..........."))
+        self.assertTrue(greplines(std.out, "..........."))
         head = std.out.strip()
         logg.info("- using HEAD %s", head)
-        std = sh(F"{PYTHON} {merge} A.fi B.fi -o N.fi -H {head} -L --merge", cwd=tmp)
+        std = sh(
+            F"{PYTHON} {merge} A.fi B.fi -o N.fi -H {head} -L --merge", cwd=tmp)
         self.assertTrue(greplines(std.out, ""))
         self.assertTrue(greplines(std.err, ""))
         catN = sh_cat("N.fi", cwd=tmp)
@@ -577,13 +623,17 @@ class GitExportMergeTest(TestCase):
         self.assertTrue(greplines(log.out, "Merge:"))
         self.rm_testdir()
 
+
 if __name__ == "__main__":
     # unittest.main()
     from optparse import OptionParser
     cmdline = OptionParser("%s test...")
-    cmdline.add_option("-v", "--verbose", action="count", default=0, help="more verbose logging")
-    cmdline.add_option("-^", "--quiet", action="count", default=0, help="less verbose logging")
-    cmdline.add_option("-k", "--keep", action="count", default=0, help="keep testdir")
+    cmdline.add_option("-v", "--verbose", action="count",
+                       default=0, help="more verbose logging")
+    cmdline.add_option("-^", "--quiet", action="count",
+                       default=0, help="less verbose logging")
+    cmdline.add_option("-k", "--keep", action="count",
+                       default=0, help="keep testdir")
     cmdline.add_option("-S", "--showgraph", action="store_true", default=False,
                        help="Show the final log-graph on each test. [%default]")
     cmdline.add_option("--failfast", action="store_true", default=False,
@@ -591,10 +641,10 @@ if __name__ == "__main__":
     cmdline.add_option("--xmlresults", metavar="FILE", default=None,
                        help="capture results as a junit xml file [%default]")
     opt, args = cmdline.parse_args()
-    basicConfig(level=max(0,WARNING - 10 * opt.verbose + 10 * opt.quiet))
+    basicConfig(level=max(0, WARNING - 10 * opt.verbose + 10 * opt.quiet))
     KEEP = opt.keep
     if opt.showgraph:
-        SHOWGRAPH=EXEC
+        SHOWGRAPH = EXEC
     if not args:
         args = ["test_*"]
     suite = TestSuite()
@@ -606,8 +656,10 @@ if __name__ == "__main__":
                 continue
             testclass = globals()[classname]
             for method in sorted(dir(testclass)):
-                if "*" not in arg: arg += "*"
-                if arg.startswith("_"): arg = arg[1:]
+                if "*" not in arg:
+                    arg += "*"
+                if arg.startswith("_"):
+                    arg = arg[1:]
                 if fnmatch(method, arg):
                     suite.addTest(testclass(method))
     # running
@@ -623,6 +675,7 @@ if __name__ == "__main__":
         logg.info(" XML reports written to %s", opt.xmlresults)
     else:
         Runner = TextTestRunner
-        result = Runner(verbosity=opt.verbose, failfast=opt.failfast).run(suite)
+        result = Runner(verbosity=opt.verbose,
+                        failfast=opt.failfast).run(suite)
     if not result.wasSuccessful():
         sys.exit(1)

@@ -35,6 +35,7 @@ COMMITTER = ""
 SKIPAUTHORS: List[str] = []
 REPLACEAUTHORS: List[str] = []
 
+
 class Fromfile(NamedTuple):
     mark: str
     name: str
@@ -47,11 +48,13 @@ class Blob(NamedTuple):
     mark: str
     data: str
 
+
 class Import(NamedTuple):
     blob: Blob
     command: str
     mark: str
     time: Time
+
 
 class Commit(NamedTuple):
     blob: Blob
@@ -61,51 +64,60 @@ class Commit(NamedTuple):
     committer: str
     time: Time
 
+
 class File(NamedTuple):
     filename: str
     fromfile: Fromfile
     filemark: str
     blob: Blob
 
+
 class Update(NamedTuple):
     commit: Commit
     time: Time
     files: List[File]
 
+
 class Loaded(NamedTuple):
     fromfile: Fromfile
     numblobs: int
+
 
 class NewMark(NamedTuple):
     fromfile: Fromfile
     oldmark: str
     newmark: str
 
+
 def time_from(spec: str) -> Optional[Time]:
     # in fast-import files, the time is given as unix-time seconds plus zone
     m = re.match(".*@[^<>]*> *(\\d+) *([+-]\\d\\d)(\\d\\d)", spec)
     if m:
         time = Time.fromtimestamp(int(m.group(1)))
-        plus = Plus(hours = int(m.group(2)), minutes = int(m.group(3)))
+        plus = Plus(hours=int(m.group(2)), minutes=int(m.group(3)))
         return time.astimezone(TimeZone(plus))
     m = re.match("(\\d\\d\\d\\d\\d+) *([+-]\\d\\d)(\\d\\d)", spec)
     if m:
         time = Time.fromtimestamp(int(m.group(1)))
-        plus = Plus(hours = int(m.group(2)), minutes = int(m.group(3)))
+        plus = Plus(hours=int(m.group(2)), minutes=int(m.group(3)))
         return time.astimezone(TimeZone(plus))
-    m = re.match("(\\d\\d\\d\\d)-(\\d\\d)-(\\d\\d)[T.](\\d\\d):(\\d\\d):(\\d\\d) *([+-]\\d\\d):?(\\d\\d)", spec)
+    m = re.match(
+        "(\\d\\d\\d\\d)-(\\d\\d)-(\\d\\d)[T.](\\d\\d):(\\d\\d):(\\d\\d) *([+-]\\d\\d):?(\\d\\d)", spec)
     if m:
-        time = Time(int(m.group(1)), int(m.group(2)), int(m.group(3)), int(m.group(4)), int(m.group(5)), int(m.group(6)))
-        plus = Plus(hours = int(m.group(7)), minutes = int(m.group(8)))
+        time = Time(int(m.group(1)), int(m.group(2)), int(m.group(3)),
+                    int(m.group(4)), int(m.group(5)), int(m.group(6)))
+        plus = Plus(hours=int(m.group(7)), minutes=int(m.group(8)))
         return time.astimezone(TimeZone(plus))
     logg.warning("unknown time desc: %s", spec)
     return None
+
 
 def with_time_from(spec: str) -> Time:
     time = time_from(spec)
     if time is None:
         raise ValueError(F"not a time spec: {spec}")
     return time
+
 
 def filemarks_from(change: str) -> Dict[str, str]:
     marks = {}
@@ -118,6 +130,7 @@ def filemarks_from(change: str) -> Dict[str, str]:
         else:
             logg.warning("unknown change desc: %s", line)
     return marks
+
 
 def commit_from(blob: Blob) -> Commit:
     author = ""
@@ -140,18 +153,19 @@ def commit_from(blob: Blob) -> Commit:
             if not line.strip():
                 break
             if line.startswith("from "):
-                merges += [ line ]
+                merges += [line]
                 continue
             if line.startswith("merge "):
-                merges += [ line ]
+                merges += [line]
                 continue
             if line and line[1:].startswith(" 100"):
-                changes += [ line ]
+                changes += [line]
             elif not changes:
                 logg.debug("?  %s", line)
             else:
                 logg.warning("?? %s", line)
     return Commit(blob, merges, changes, author, committer, with_time_from(committer or author))
+
 
 def run(files: List[str]) -> None:
     loaded = []
@@ -165,35 +179,35 @@ def run(files: List[str]) -> None:
         mark = ""
         for line in open(filename):
             if line.strip().startswith("commit "):
-               if text:
-                   numblobs += 1
-                   blobs += [ Blob(fromfile, command, mark, text) ]
-               text = line
-               mark = ""
-               command = "commit"
+                if text:
+                    numblobs += 1
+                    blobs += [Blob(fromfile, command, mark, text)]
+                text = line
+                mark = ""
+                command = "commit"
             elif line.strip() == "blob":
-               if text:
-                   numblobs += 1
-                   blobs += [ Blob(fromfile, command, mark, text) ]
-               text = line
-               mark = ""
-               command = "blob"
+                if text:
+                    numblobs += 1
+                    blobs += [Blob(fromfile, command, mark, text)]
+                text = line
+                mark = ""
+                command = "blob"
             else:
-               text += line
+                text += line
             if line.startswith("mark :"):
-               mark = line[5:].strip()
+                mark = line[5:].strip()
         if text:
             numblobs += 1
-            blobs += [ Blob(fromfile, command, mark, text) ]
-        loaded += [ Loaded(fromfile, numblobs) ]
+            blobs += [Blob(fromfile, command, mark, text)]
+        loaded += [Loaded(fromfile, numblobs)]
     logg.log(NOTE, "loaded %s blobs from %s files", len(blobs), len(loaded))
     for blob in blobs:
         if not blob.mark:
-            logg.log(NOTE, "%s %s (%s) %s=%s", blob.command, "??", len(blob.data), 
-                blob.fromfile.mark, blob.fromfile.name)
+            logg.log(NOTE, "%s %s (%s) %s=%s", blob.command, "??", len(blob.data),
+                     blob.fromfile.mark, blob.fromfile.name)
         else:
-            logg.info("%s %s (%s) %s=%s", blob.command, blob.mark, len(blob.data), 
-                blob.fromfile.mark, blob.fromfile.name)
+            logg.info("%s %s (%s) %s=%s", blob.command, blob.mark, len(blob.data),
+                      blob.fromfile.mark, blob.fromfile.name)
         if blob.command in ["commit"]:
             commit = commit_from(blob)
             logg.info("| author %s", commit.author)
@@ -207,7 +221,8 @@ def run(files: List[str]) -> None:
         frommark = blob.fromfile.mark
         blobmark = blob.mark
         blobmap[frommark+blobmark] = blob
-    logg.log(NOTE, "loaded %s blobs, blobmap %s blobs", len(blobs), len(blobmap.keys()))
+    logg.log(NOTE, "loaded %s blobs, blobmap %s blobs",
+             len(blobs), len(blobmap.keys()))
     numcommits = 0
     numchanges = 0
     updates = {}
@@ -223,7 +238,7 @@ def run(files: List[str]) -> None:
                     ignore = True
                     break
             if ignore:
-               continue
+                continue
             frommark = blob.fromfile.mark
             filemarks = {}
             for change in commit.changes:
@@ -235,16 +250,17 @@ def run(files: List[str]) -> None:
                 if lookup in blobmap:
                     blob = blobmap[lookup]
                     fileinfo = File(filename, blob.fromfile, filemark, blob)
-                    fileinfos += [ fileinfo ]
+                    fileinfos += [fileinfo]
                 else:
                     logg.warning("could not find %s:", lookup)
             updates[blobref] = Update(commit, commit.time, fileinfos)
-    logg.log(NOTE, "loaded %s blobs, %s commits + %s changes = %s", len(blobs), numcommits, numchanges, numcommits+numchanges)
+    logg.log(NOTE, "loaded %s blobs, %s commits + %s changes = %s",
+             len(blobs), numcommits, numchanges, numcommits+numchanges)
     base = 1000
     if len(blobs) >= 1000:
-       base = 10000
+        base = 10000
     if len(blobs) >= 10000:
-       base = 100000
+        base = 100000
     imports: List[Import] = []
     newmarks: Dict[str, NewMark] = OrderedDict()
     for ref in sorted(updates, key=lambda x: updates[x].time):
@@ -260,7 +276,7 @@ def run(files: List[str]) -> None:
             newmarks[frok+mark] = NewMark(blob.fromfile, blob.mark, newnum)
             logg.info("  file %s%s %s %s", frok, mark, newnum, filename)
             imp = Import(blob, blob.command, newnum, update.time)
-            imports += [ imp ]
+            imports += [imp]
         num = base + len(newmarks)
         newnum = ":%i" % num
         blob = update.commit.blob
@@ -269,13 +285,14 @@ def run(files: List[str]) -> None:
         newmarks[frok+mark] = NewMark(blob.fromfile, blob.mark, newnum)
         logg.info("    up %s %s <- %s", ref, newnum, blob.mark)
         imp = Import(blob, blob.command, newnum, update.time)
-        imports += [ imp ]
-    logg.log(NOTE, "loaded %s blobs, generated %s blobs", len(blobs), len(imports))
+        imports += [imp]
+    logg.log(NOTE, "loaded %s blobs, generated %s blobs",
+             len(blobs), len(imports))
     for ref, newmark in newmarks.items():
         logg.log(HINT, "     %s -> %s", ref, newmark)
     if not OUTPUT:
         out = sys.stdout
-    else: 
+    else:
         out = open(OUTPUT, "w")
     # start generating the fast-import stream
     oldest = time_from(DATE)
@@ -302,7 +319,9 @@ class Comment(NamedTuple):
     timespec: str
     comment: str
 
+
 HISTORY = []
+
 
 def update_commit(data: str, frok: str, marks: Dict[str, NewMark], newfrom: str = "") -> str:
     global HISTORY
@@ -322,24 +341,24 @@ def update_commit(data: str, frok: str, marks: Dict[str, NewMark], newfrom: str 
             if line.startswith("data "):
                 skipover = int(line[len("data "):])
                 wait = "end"
-                lines += [ line ]
+                lines += [line]
                 continue
             if line.startswith("from :"):
                 oldfrom = line[len("from "):].strip()
                 if newfrom.strip():
-                   lines += ["from "+newfrom.strip()]
-                   donemark = True
-                   oldref = frok+oldfrom
-                   if oldref in marks:
-                       newmark = marks[oldref].newmark
-                       if newmark != newfrom.strip() and newfrom.startswith(":") and MERGES:
-                           lines += ["merge "+newmark]
+                    lines += ["from "+newfrom.strip()]
+                    donemark = True
+                    oldref = frok+oldfrom
+                    if oldref in marks:
+                        newmark = marks[oldref].newmark
+                        if newmark != newfrom.strip() and newfrom.startswith(":") and MERGES:
+                            lines += ["merge "+newmark]
                 continue
             if line.startswith("merge :"):
                 continue
             if line.startswith("committer "):
                 if COMMITTER and ">" in line:
-                    timespec = line.split(">",1)[1]
+                    timespec = line.split(">", 1)[1]
                     newline = "committer "+COMMITTER+timespec
                     wastimespec = timespec
                 else:
@@ -349,14 +368,14 @@ def update_commit(data: str, frok: str, marks: Dict[str, NewMark], newfrom: str 
             if line.startswith("author "):
                 if ">" in line:
                     newline = line
-                    author0, timespec = line[len("author "):].split(">",1)
+                    author0, timespec = line[len("author "):].split(">", 1)
                     author = (author0 + ">").strip()
                     wasauthor = author
                     for replace in REPLACEAUTHORS:
                         if "=" in replace:
-                           old, new = replace.split("=", 1)
-                           if fnmatch(author, old):
-                               newline = "author "+new+timespec
+                            old, new = replace.split("=", 1)
+                            if fnmatch(author, old):
+                                newline = "author "+new+timespec
                 else:
                     newline = line
                 lines += [newline]
@@ -365,34 +384,34 @@ def update_commit(data: str, frok: str, marks: Dict[str, NewMark], newfrom: str 
                 oldmark = line[5:].strip()
                 oldref = frok+oldmark
                 if oldref in marks:
-                   newmark = marks[oldref].newmark
+                    newmark = marks[oldref].newmark
                 else:
                     logg.error("did not find oldmark %s", oldref)
                     newmark = oldmark
                 lines += ["mark "+newmark]
             else:
-                lines += [ line ]
+                lines += [line]
         elif wait == "end":
             if skipover:
-               wascomment = line
-               skipover = 0
+                wascomment = line
+                skipover = 0
             if line.startswith("from :"):
                 oldfrom = line[len("from "):].strip()
                 if newfrom.strip():
-                   lines += ["from "+newfrom.strip()]
-                   donemark = True
-                   oldref = frok+oldfrom
-                   if oldref in marks:
-                       newmark = marks[oldref].newmark
-                       if newmark != newfrom.strip() and newfrom.startswith(":") and MERGES:
-                           lines += ["merge "+newmark]
+                    lines += ["from "+newfrom.strip()]
+                    donemark = True
+                    oldref = frok+oldfrom
+                    if oldref in marks:
+                        newmark = marks[oldref].newmark
+                        if newmark != newfrom.strip() and newfrom.startswith(":") and MERGES:
+                            lines += ["merge "+newmark]
                 continue
             if line.startswith("merge :"):
                 continue
             if line and line[1:].startswith(" 100"):
                 if newfrom.strip() and not donemark:
-                   lines += ["from "+newfrom.strip()]
-                   donemark = True
+                    lines += ["from "+newfrom.strip()]
+                    donemark = True
                 m = re.match("(\\S) (\\d+) (\\S+) (.*)", line)
                 if m:
                     oldmark = m.group(3)
@@ -405,7 +424,8 @@ def update_commit(data: str, frok: str, marks: Dict[str, NewMark], newfrom: str 
                     filename = m.group(4)
                     if SUBDIR:
                         filename = SUBDIR + "/" + filename
-                    newline = "%s %s %s %s" % (m.group(1), m.group(2), newmark, filename)
+                    newline = "%s %s %s %s" % (
+                        m.group(1), m.group(2), newmark, filename)
                 else:
                     logg.error("unknown change: %s", line)
                     newline = line
@@ -416,6 +436,7 @@ def update_commit(data: str, frok: str, marks: Dict[str, NewMark], newfrom: str 
             lines += [line]
     HISTORY += [Comment(wasauthor, wastimespec, wascomment)]
     return "\n".join(lines)
+
 
 def update_blob(data: str, frok: str, marks: Dict[str, NewMark]) -> str:
     lines = []
@@ -441,6 +462,7 @@ def update_blob(data: str, frok: str, marks: Dict[str, NewMark]) -> str:
             lines += [line]
     return "\n".join(lines)
 
+
 def gitconfig_user() -> str:
     config = ConfigParser()
     config.read(fs.expanduser("~/.gitconfig"))
@@ -450,13 +472,16 @@ def gitconfig_user() -> str:
         return "%s <%s>" % (uname, email)
     return ""
 
+
 def git_last_head(repo: str) -> str:
     cmd = F"{GIT} --no-pager rev-parse HEAD"
     return check_output(cmd, cwd=fs.abspath(repo), shell=True).decode("utf-8")
 
+
 def git_last_date(repo: str) -> str:
     cmd = F"{GIT} --no-pager show -s --format=%cI HEAD"
     return check_output(cmd, cwd=fs.abspath(repo), shell=True).decode("utf-8")
+
 
 def git_fast_import(repo: str, fastexport: str) -> str:
     exportfile = fs.abspath(fastexport)
@@ -491,14 +516,14 @@ if __name__ == "__main__":
                        help="skip commits matching some author")
     cmdline.add_option("-r", "--replace", metavar="old=new", action="append", default=[],
                        help="replace author matched by left part")
-    cmdline.add_option("-m", "--merges", action = "store_true", default=False,
+    cmdline.add_option("-m", "--merges", action="store_true", default=False,
                        help="generate merges for different inputs")
     cmdline.add_option("-b", "--branch", metavar="file", default="main",
                        help="generate import to this branch (main)")
     cmdline.add_option("-o", "--output", metavar="file", default="",
                        help="generate into file instead of stdout")
     opt, args = cmdline.parse_args()
-    basicConfig(level = ERROR - 5 * opt.verbose)
+    basicConfig(level=ERROR - 5 * opt.verbose)
     HEAD = opt.head
     DATE = opt.date
     SUBDIR = opt.subdir
@@ -509,13 +534,13 @@ if __name__ == "__main__":
     SKIPAUTHORS = opt.skip
     COMMITTER = opt.committer
     if not COMMITTER:
-       COMMITTER = gitconfig_user()
+        COMMITTER = gitconfig_user()
     if opt.into:
         HEAD = git_last_head(opt.into)
         DATE = git_last_date(opt.into)
         if opt.imports:
             if not OUTPUT:
-                OUTPUT=fs.normpath(opt.into) + ".fi"
+                OUTPUT = fs.normpath(opt.into) + ".fi"
     run(args)
     if opt.imports:
         git_fast_import(opt.into, OUTPUT)
@@ -523,8 +548,9 @@ if __name__ == "__main__":
         if opt.historyfile:
             with open(opt.historyfile, "w") as hfile:
                 for hist in reversed(HISTORY):
-                    print(hist.author, hist.timespec, ":", hist.comment, file=hfile)
+                    print(hist.author, hist.timespec,
+                          ":", hist.comment, file=hfile)
         else:
             for hist in reversed(HISTORY):
-                logg.log(DONE, " %s %s: %s", hist.author, hist.timespec, hist.comment)
-        
+                logg.log(DONE, " %s %s: %s", hist.author,
+                         hist.timespec, hist.comment)
