@@ -9,4 +9,4 @@ help:
 	$(PYTHON) $(SCRIPT) --help
 
 test: ; $(PYTHON) $(TESTS) $V
-test_%: ; $(PYTHON) $(TESTS) $V $@
+test_%: ; $(PYTHON) $(TESTS) --failfast $V $@ 
