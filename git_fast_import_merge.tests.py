@@ -174,19 +174,19 @@ def greplines(lines: Union[str, List[str]], *pattern: str) -> List[str]:
     logg.debug("[?]=> %s", eachline)
     return []
 
-def loadworkspace(workspace: str) -> Dict[str, str]:
-    files: Dict[str, str] = {}
+def loadworkspace(workspace: str, keeplinebreaks: bool =False) -> Dict[str, List[str]]:
+    files: Dict[str, List[str]] = {}
     for dirpath, dirnames, filenames in os.walk(workspace):
         if "/.git/" in ("/"+dirpath+"/"):
             continue
         for name in filenames:
             filename = fs.join(dirpath, name)
-            logg.log(DEBUG, " wc %s", filename)
             workname = filename[len(workspace)+1:]
+            logg.log(DEBUG, " wc '%s'", workname)
             text = decodes(open(filename).read())
-            files[workname] = text
-            info = text.splitlines(True) if len(text) < 20 else ["%s bytes" % len(text)]
-            logg.log(EXEC, "  wc %s  # %s", filename, info)
+            files[workname] = text.splitlines(keeplinebreaks)
+            info = files[workname] if len(text) < 30 else ["%s bytes" % len(text)]
+            logg.log(EXEC, "  wc '%s': %s", workname, info)
     return files
 
 def get_caller_name() -> str:
@@ -305,7 +305,7 @@ class ImportMergeTest(TestCase):
         M= fs.join(tmp, "M")
         out = sh(F"{git} clone --local N M", cwd=tmp)
         files = loadworkspace(M)
-        wants = {"world.txt": "hello\n"}
+        wants = {"world.txt": ["hello"],}
         self.assertEqual(wants, files)
         self.rm_testdir()
 
@@ -385,7 +385,7 @@ class ImportMergeTest(TestCase):
         M= fs.join(tmp, "M")
         out = sh(F"{git} clone --local N M", cwd=tmp)
         files = loadworkspace(M)
-        wants = {"world.txt": "again\n"}
+        wants = {"world.txt": ["again"],}
         self.assertEqual(wants, files)
         self.rm_testdir()
 
@@ -465,7 +465,7 @@ class ImportMergeTest(TestCase):
         M= fs.join(tmp, "M")
         out = sh(F"{git} clone --local N M", cwd=tmp)
         files = loadworkspace(M)
-        wants = {"world.txt": "again\n"}
+        wants = {"world.txt": ["again"],}
         self.assertEqual(wants, files)
         self.rm_testdir()
     def test_130(self) -> None:
@@ -544,7 +544,7 @@ class ImportMergeTest(TestCase):
         M= fs.join(tmp, "M")
         out = sh(F"{git} clone --local N M", cwd=tmp)
         files = loadworkspace(M)
-        wants = {"travel/world.txt": "again\n"}
+        wants = {"travel/world.txt": ["again"],}
         self.assertEqual(wants, files)
         self.rm_testdir()
 
@@ -625,7 +625,7 @@ class ImportMergeTest(TestCase):
         M= fs.join(tmp, "M")
         out = sh(F"{git} clone --local N M", cwd=tmp)
         files = loadworkspace(M)
-        wants = {"world.txt": "hello\n", 'LICENSE': 'OK\n'}
+        wants = {"world.txt": ["hello"], 'LICENSE': ['OK']}
         self.assertEqual(wants, files)
         self.rm_testdir()
 
@@ -718,7 +718,7 @@ class ImportMergeTest(TestCase):
         M= fs.join(tmp, "M")
         out = sh(F"{git} clone --local N M", cwd=tmp)
         files = loadworkspace(M)
-        wants = {"world.txt": "again\n", 'LICENSE': 'OK\n'}
+        wants = {"world.txt": ["again"], 'LICENSE': ['OK']}
         self.assertEqual(wants, files)
         self.rm_testdir()
 
@@ -812,7 +812,7 @@ class ImportMergeTest(TestCase):
         M= fs.join(tmp, "M")
         out = sh(F"{git} clone --local N M", cwd=tmp)
         files = loadworkspace(M)
-        wants = {"world.txt": "again\n", 'LICENSE': 'OK\n'}
+        wants = {"world.txt": ["again"], 'LICENSE': ['OK']}
         self.assertEqual(wants, files)
         self.rm_testdir()
 
@@ -906,7 +906,7 @@ class ImportMergeTest(TestCase):
         M= fs.join(tmp, "M")
         out = sh(F"{git} clone --local N M", cwd=tmp)
         files = loadworkspace(M)
-        wants = {"travel/world.txt": "again\n", 'LICENSE': 'OK\n'}
+        wants = {"travel/world.txt": ["again"], 'LICENSE': ['OK']}
         self.assertEqual(wants, files)
         self.rm_testdir()
 
