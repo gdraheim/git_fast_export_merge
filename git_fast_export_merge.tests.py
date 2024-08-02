@@ -17,8 +17,10 @@ from logging import getLogger, basicConfig, WARNING, INFO, addLevelName
 
 NOTE = (WARNING+INFO)//2
 EXEC = INFO+1
+TMP = INFO+2
 addLevelName(NOTE, "NOTE")
 addLevelName(EXEC, "EXEC")
+addLevelName(TMP, "TMP")
 
 logg = getLogger("TEST")
 KEEP = 0
@@ -154,6 +156,8 @@ class GitExportMergeTest(TestCase):
             shutil.rmtree(newdir)
         if not fs.isdir(newdir):
             os.makedirs(newdir)
+            logg.log(TMP, "==================== %s", newdir)
+            # logg.log(TMP, ".................... %s", newdir)
         return newdir
     def rm_testdir(self, testname: Optional[str] = None) -> str:
         testname = testname or self.caller_testname()
@@ -161,6 +165,8 @@ class GitExportMergeTest(TestCase):
         if fs.isdir(newdir):
             if not KEEP:
                 shutil.rmtree(newdir)
+            else:
+                logg.log(TMP, "================ KEEP %s", newdir)
         return newdir
     def test_100(self) -> None:
         tmp = self.testdir()
