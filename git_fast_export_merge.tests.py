@@ -88,12 +88,12 @@ def sh_cat(filename: str, default: str = NIX, cwd: str = NIX) -> Run:
     else:
         filepath = filename
     if not fs.exists(filepath):
-        logg.debug("does not exist: %s", filepath)
+        logg.log(EXEC, "  cat %s  # does not exist", filename)
         return Run(default, "does not exist: "+filename, 3)
     else:
         text = open(filepath).read()
         lines = text.splitlines()
-        logg.log(EXEC, "  cat %s [%s bytes] [%s lines]", filename, len(text), len(lines))
+        logg.log(EXEC, "  cat %s  # [%s bytes] [%s lines]", filename, len(text), len(lines))
         logg.debug("%s", lines)
         return Run(text, "", 0)
 
