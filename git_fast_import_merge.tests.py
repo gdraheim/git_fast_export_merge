@@ -3,7 +3,7 @@
 __copyright__ = "(C) 2023-2024 Guido Draheim, licensed under the Apache License 2.0"""
 __version__ = "1.0.1315"
 
-from typing import Optional, Any, List, Union, Iterator, NamedTuple, Mapping
+from typing import Optional, Any, List, Union, Iterator, NamedTuple, Mapping, Dict
 
 from subprocess import check_output, Popen, PIPE, CalledProcessError
 from unittest import TestCase, TestSuite, TextTestRunner
@@ -174,6 +174,16 @@ def greplines(lines: Union[str, List[str]], *pattern: str) -> List[str]:
     logg.debug("[?]=> %s", eachline)
     return []
 
+def loadworkspace(workspace: str) -> Dict[str, str]:
+    files: Dict[str, str] = {}
+    for dirpath, dirnames, filenames in os.walk(workspace):
+        if "/.git/" in ("/"+dirpath+"/"):
+            continue
+        for name in filenames:
+            filename = fs.join(dirpath, name)
+            logg.fatal("load %s", filename)
+            files[name] = decodes(open(filename).read())
+    return files
 
 def get_caller_name() -> str:
     frame = inspect.currentframe().f_back.f_back  # type: ignore
@@ -280,6 +290,10 @@ class ImportMergeTest(TestCase):
         self.assertTrue(greplines(log.out, "hello-B", "hello-A"))
         self.assertFalse(greplines(log.out, "license"))
         self.assertFalse(greplines(log.out, "Merge:"))
+        out = sh(F"{git} checkout HEAD", cwd=N)
+        files = loadworkspace(N)
+        wants = {"world.txt": "hello\n"}
+        self.assertEqual(wants, files)
         self.rm_testdir()
 
     def test_110(self) -> None:
