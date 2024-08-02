@@ -8,7 +8,7 @@ COVERAGE3 = $(PYTHON3) -m coverage
 TESTS=$(SCRIPT:.py=.tests.py)
 V=-v
 
-BASEYEAR=2021
+BASEYEAR=2023
 FOR=today
 
 -include Makefile.tmp
@@ -29,6 +29,7 @@ clean:
 	- rm *.cover *,cover
 
 ############## version
+FILES = *.py *.cfg
 
 version:
 	@ grep -l __version__ $(FILES) | { while read f; do : \
