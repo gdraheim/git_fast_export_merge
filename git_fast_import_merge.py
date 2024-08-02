@@ -487,9 +487,9 @@ def git_last_date(repo: str) -> str:
     return check_output(cmd, cwd=fs.abspath(repo), shell=True).decode("utf-8")
 
 
-def git_fast_import(repo: str, fastexport: str) -> str:
-    exportfile = fs.abspath(fastexport)
-    cmd = F"cat '{exportfile}' | {GIT} --no-pager fast-import"
+def git_fast_import(repo: str, fastimport: str) -> str:
+    importfile = fs.abspath(fastimport)
+    cmd = F"cat '{importfile}' | {GIT} --no-pager fast-import"
     return check_output(cmd, cwd=fs.abspath(repo), shell=True).decode("utf-8")
 
 

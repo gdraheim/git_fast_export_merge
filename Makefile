@@ -1,4 +1,4 @@
-SCRIPT=git_fast_export_merge.py
+SCRIPT=git_fast_import_merge.py
 PYTHON3=python3
 PYTHON=$(PYTHON3)
 TWINE=twine

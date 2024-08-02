@@ -34,7 +34,7 @@ NIX = ""
 GIT = "git"
 RUN = "--no-pager"
 PYTHON = "python3"
-MERGE = "git_fast_export_merge.py"
+MERGE = "git_fast_import_merge.py"
 
 
 def sx__(cmd: str, cwd: Optional[str] = None, shell: bool = True, env: Mapping[str, str] = {"LANG": "C"}, **args: Any) -> str:
@@ -185,7 +185,7 @@ def get_caller_caller_name() -> str:
     return frame.f_code.co_name  # type: ignore
 
 
-class GitExportMergeTest(TestCase):
+class ImportMergeTest(TestCase):
     def caller_testname(self) -> str:
         name = get_caller_caller_name()
         x1 = name.find("_")

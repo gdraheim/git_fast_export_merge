@@ -1,6 +1,6 @@
-# git fast-export merge
+# git fast-import merge
 
-The `git_fast_export_merge.py` tool can read multiple archive files from 'git fast-export' 
+The `git_fast_import_merge.py` tool can read multiple archive files from 'git fast-export' 
 and merge them into a single archive file for 'git fast-import' ordering the changes by date. 
 
 Optionally, (with -m) when switching the input file some 'merge' command is generated into 
@@ -15,7 +15,7 @@ synchronized to the other projects.
 
 Now it is possible to use `git fast-export HEAD -- libcode.py libhelper.py > libcode1.fi`.
 
-Then merge them like `./git_fast_export_merge.py libcode1.fi libcode2.fi -o libcode.fi`.
+Then merge them like `./git_fast_import_merge.py libcode1.fi libcode2.fi -o libcode.fi`.
 
 And the combined archive can be imported: `cd libbcode; cat ../libcode.fi | git fast-import`.
 
