@@ -3,7 +3,7 @@
 __copyright__ = "(C) 2017-2024 Guido Draheim, licensed under the Apache License 2.0"""
 __version__ = "1.6.3321"
 
-from typing import Optional, Any, List, Union, Iterator, NamedTuple
+from typing import Optional, Any, List, Union, Iterator, NamedTuple, Mapping
 
 from subprocess import check_output, Popen, PIPE, CalledProcessError
 from unittest import TestCase, TestSuite, TextTestRunner
@@ -34,27 +34,28 @@ RUN = "--no-pager"
 PYTHON = "python3"
 MERGE = "git_fast_export_merge.py"
 
-def sx__(cmd: str, cwd: Optional[str] = None, shell: bool = True, env={"LANG":"C"}, **args: Any) -> str:
+def sx__(cmd: str, cwd: Optional[str] = None, shell: bool = True, env: Mapping[str, str] ={"LANG":"C"}, **args: Any) -> str:
     try:
         return sh__(cmd, cwd=cwd, shell=shell, env=env, **args)
     except Exception as e:
         logg.debug("sh failed: %s", cmd)
         return ""
-def sh__(cmd: str, cwd: Optional[str] = None, shell: bool = True, env={"LANG":"C"}, **args: Any) -> str:
+def sh__(cmd: str, cwd: Optional[str] = None, shell: bool = True, env: Mapping[str, str]={"LANG":"C"}, **args: Any) -> str:
     logg.debug("sh %s", cmd)
-    return check_output(cmd, cwd=cwd, shell=shell, env=env, **args).decode("utf-8")
+    return decodes(check_output(cmd, cwd=cwd, shell=shell, env=env, **args))
+
 class Run(NamedTuple):
     out: str
     err: str
     code: int
 def sh(cmd: Union[str, List[str]], cwd: Optional[str] = None, shell: Optional[bool] = None, 
-       input: Optional[str] = None, env={"LANG":"C"}) -> Run:
+       input: Optional[str] = None, env: Mapping[str, str]={"LANG":"C"}) -> Run:
     std = run(cmd, cwd, shell, input, env)
     if std.code:
         raise CalledProcessError(std.code, cmd, std.out, std.err)
     return std
 def run(cmd: Union[str, List[str]], cwd: Optional[str] = None, shell: Optional[bool] = None, 
-       input: Optional[str] = None, env={"LANG":"C"}) -> Run:
+       input: Optional[str] = None, env: Mapping[str, str]={"LANG":"C"}) -> Run:
     if isinstance(cmd, str):
         logg.log(EXEC, ": %s", cmd)
         shell = True if shell is None else shell
