@@ -82,7 +82,20 @@ def decodes(text: Union[bytes, str]) -> str:
         except:
             return text.decode("latin-1")
     return text
-
+def sh_cat(filename: str, default: str = NIX, cwd: str = NIX) -> Run:
+    if cwd:
+        filepath = fs.join(cwd, filename)
+    else:
+        filepath = filename
+    if not fs.exists(filepath):
+        logg.debug("does not exist: %s", filepath)
+        return Run(default, "does not exist: "+filename, 3)
+    else:
+        text = open(filepath).read()
+        lines = text.splitlines()
+        logg.log(EXEC, "  cat %s [%s bytes] [%s lines]", filename, len(text), len(lines))
+        logg.debug("%s", lines)
+        return Run(text, "", 0)
 
 def _lines(lines: Union[str, List[str]]) -> List[str]:
     if isinstance(lines, str):
@@ -198,11 +211,11 @@ class GitExportMergeTest(TestCase):
         #
         std = sh(F"{GIT} {RUN} fast-export HEAD > ../A.fi", cwd=A)
         self.assertTrue(greplines(std.out, ""))
-        catA = sh(F"cat A.fi", cwd=tmp)
+        catA = sh_cat(F"A.fi", cwd=tmp)
         self.assertTrue(greplines(catA.out, "hello-A"))
         std = sh(F"{GIT} {RUN} fast-export HEAD > ../B.fi", cwd=B)
         self.assertTrue(greplines(std.out, ""))
-        catB = sh(F"cat B.fi", cwd=tmp)
+        catB = sh_cat(F"B.fi", cwd=tmp)
         self.assertTrue(greplines(catB.out, "hello-B"))
         self.assertNotEqual(greplines(catA.out, "committer .*"), greplines(catB.out, "committer .*"))
         #
@@ -212,7 +225,7 @@ class GitExportMergeTest(TestCase):
         self.assertTrue(greplines(std.out, "Initialized empty"))
         std = sh(F"{PYTHON} {merge} A.fi B.fi -o N.fi", cwd=tmp)
         self.assertTrue(greplines(std.out, ""))
-        catN = sh(F"cat N.fi", cwd=tmp)
+        catN = sh_cat(F"N.fi", cwd=tmp)
         self.assertTrue(greplines(catN.out, "hello-A", "hello-B"))
         std = sh(F"{GIT} {RUN} fast-import < ../N.fi", cwd=N)
         self.assertTrue(greplines(std.out, ""))
@@ -250,11 +263,11 @@ class GitExportMergeTest(TestCase):
         #
         std = sh(F"{GIT} {RUN} fast-export HEAD > ../A.fi", cwd=A)
         self.assertTrue(greplines(std.out, ""))
-        catA = sh(F"cat A.fi", cwd=tmp)
+        catA = sh_cat(F"A.fi", cwd=tmp)
         self.assertTrue(greplines(catA.out, "hello-A"))
         std = sh(F"{GIT} {RUN} fast-export HEAD > ../B.fi", cwd=B)
         self.assertTrue(greplines(std.out, ""))
-        catB = sh(F"cat B.fi", cwd=tmp)
+        catB = sh_cat("B.fi", cwd=tmp)
         self.assertTrue(greplines(catB.out, "hello-B"))
         #
         merge = fs.abspath(MERGE)
@@ -270,10 +283,11 @@ class GitExportMergeTest(TestCase):
         std = sh(F"{GIT} {RUN} rev-parse HEAD", cwd=N)
         self.assertTrue(greplines(std.out,"..........."))
         head = std.out.strip()
+        logg.info("- using HEAD %s", head)
         std = sh(F"{PYTHON} {merge} A.fi B.fi -o N.fi -H {head} -L", cwd=tmp)
         self.assertTrue(greplines(std.out, ""))
         self.assertTrue(greplines(std.err, ""))
-        catN = sh(F"cat N.fi", cwd=tmp)
+        catN = sh_cat("N.fi", cwd=tmp)
         self.assertTrue(greplines(catN.out, "hello-A", "hello-B"))
         std = sh(F"{GIT} {RUN} fast-import < ../N.fi", cwd=N)
         self.assertTrue(greplines(std.out, ""))
