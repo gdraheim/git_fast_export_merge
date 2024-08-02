@@ -68,14 +68,23 @@ build:
 
 ins install:
 	$(MAKE) setup.py
+	export DISTUTILS_DEBUG=1; \
 	$(PYTHON3) -m pip install --no-compile --user .
 	rm -v setup.py
-	$(MAKE) show | sed -e "s|[.][.]/[.][.]/[.][.]/bin|$$HOME/.local/bin|"
-show:;  $(PYTHON3) -m pip show -f $$(sed -e '/^name *=/!d' -e 's/.*= *//' setup.cfg)
+	$(MAKE) shows | sed -e "s|[.][.]/[.][.]/[.][.]/bin|$$HOME/.local/bin|"
+show:
+	test -d tmp || mkdir -v tmp
+	cd tmp && $(PYTHON3) -m pip show -f $$(sed -e '/^name *=/!d' -e 's/.*= *//' ../setup.cfg)
 uns uninstall: setup.py
-	$(MAKE) setup.py
-	$(PYTHON3) -m pip uninstall -v --yes $$(sed -e '/^name *=/!d' -e 's/.*= *//' setup.cfg)
-	rm -v setup.py
+	test -d tmp || mkdir -v tmp
+	cd tmp && $(PYTHON3) -m pip uninstall -v --yes $$(sed -e '/^name *=/!d' -e 's/.*= *//' ../setup.cfg)
+rem remove:
+	- rm -v ~/.local/bin/$(SCRIPT)
+	- rm -v ~/.local/data/$(SCRIPT:.py=.tests.py)
+	- find ~/.local/lib -name site-packages | \
+	  { while read site; do rm -rv $$site/$$(sed -e '/^name *=/!d' -e 's/.*= *//' setup.cfg)-*; done }
+	- rm -rv ~/.local/data/$$(sed -e '/^name *=/!d' -e 's/.*= *//' setup.cfg)/
+	- rm -v ~/.local/data/README.md
 
 mypy:
 	zypper install -y mypy

@@ -1,3 +1,6 @@
 *.tmp
 tmp.*
 *~
+dist
+*.egg-info
+setup.py
