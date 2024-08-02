@@ -3,9 +3,9 @@
 __copyright__ = "(C) 2017-2024 Guido Draheim, licensed under the Apache License 2.0"""
 __version__ = "1.6.3321"
 
-from typing import Optional, Any, List, Union, Iterator
+from typing import Optional, Any, List, Union, Iterator, NamedTuple
 
-from subprocess import check_output
+from subprocess import check_output, Popen, PIPE, CalledProcessError
 from unittest import TestCase, TestSuite, TextTestRunner
 import os.path as fs
 import shutil
@@ -13,7 +13,12 @@ import os, sys, re
 import inspect
 from time import sleep
 from fnmatch import fnmatchcase as fnmatch
-from logging import getLogger, basicConfig, WARNING
+from logging import getLogger, basicConfig, WARNING, INFO, addLevelName
+
+NOTE = (WARNING+INFO)//2
+EXEC = INFO+1
+addLevelName(NOTE, "NOTE")
+addLevelName(EXEC, "EXEC")
 
 logg = getLogger("TEST")
 KEEP = 0
@@ -23,21 +28,58 @@ RUN = "--no-pager"
 PYTHON = "python3"
 MERGE = "git_fast_export_merge.py"
 
-def sx(cmd: str, cwd: Optional[str] = None, shell: bool = True, env={"LANG":"C"}, **args: Any) -> str:
+def sx__(cmd: str, cwd: Optional[str] = None, shell: bool = True, env={"LANG":"C"}, **args: Any) -> str:
     try:
-        return sh(cmd, cwd=cwd, shell=shell, env=env, **args)
+        return sh__(cmd, cwd=cwd, shell=shell, env=env, **args)
     except Exception as e:
         logg.debug("sh failed: %s", cmd)
         return ""
-def sh(cmd: str, cwd: Optional[str] = None, shell: bool = True, env={"LANG":"C"}, **args: Any) -> str:
+def sh__(cmd: str, cwd: Optional[str] = None, shell: bool = True, env={"LANG":"C"}, **args: Any) -> str:
     logg.debug("sh %s", cmd)
     return check_output(cmd, cwd=cwd, shell=shell, env=env, **args).decode("utf-8")
-def get_caller_name() -> str:
-    frame = inspect.currentframe().f_back.f_back  # type: ignore
-    return frame.f_code.co_name  # type: ignore
-def get_caller_caller_name() -> str:
-    frame = inspect.currentframe().f_back.f_back.f_back  # type: ignore
-    return frame.f_code.co_name  # type: ignore
+class Run(NamedTuple):
+    out: str
+    err: str
+    code: int
+def sh(cmd: Union[str, List[str]], cwd: Optional[str] = None, shell: Optional[bool] = None, 
+       input: Optional[str] = None, env={"LANG":"C"}) -> Run:
+    std = run(cmd, cwd, shell, input, env)
+    if std.code:
+        raise CalledProcessError(std.code, cmd, std.out, std.err)
+    return std
+def run(cmd: Union[str, List[str]], cwd: Optional[str] = None, shell: Optional[bool] = None, 
+       input: Optional[str] = None, env={"LANG":"C"}) -> Run:
+    if isinstance(cmd, str):
+        logg.log(EXEC, ": %s", cmd)
+        shell = True if shell is None else shell
+    else:
+        logg.log(EXEC, ": %s", " ".join(["'%s'" % item for item in cmd]))
+        shell = False if shell is None else shell
+    if input is not None:
+        run = Popen(cmd, cwd=cwd, shell=shell, stdout=PIPE, stderr=PIPE, stdin=PIPE, env=env)
+        out, err = run.communicate(input.encode("utf-8"))
+    else:
+        run = Popen(cmd, cwd=cwd, shell=shell, stdout=PIPE, stderr=PIPE, env=env)
+        out, err = run.communicate()
+    text_out = decodes(out)
+    text_err = decodes(err)
+    logg.debug("stdout = %s", text_out.splitlines())
+    if text_err:
+        logg.debug("stderr = %s", text_err.splitlines())
+    if run.returncode:
+        logg.debug("return = %s", run.returncode)
+    return Run(text_out, text_err, run.returncode)
+def decodes(text: Union[bytes, str]) -> str:
+    if text is None: return None
+    if isinstance(text, bytes):
+        encoded = sys.getdefaultencoding()
+        if encoded in ["ascii"]:
+            encoded = "utf-8"
+        try:
+            return text.decode(encoded)
+        except:
+            return text.decode("latin-1")
+    return text
 
 
 def _lines(lines: Union[str, List[str]]) -> List[str]:
@@ -81,8 +123,16 @@ def greplines(lines: Union[str, List[str]], *pattern: str) -> List[str]:
                 look +=1
                 if look == done:
                     return found
-    logg.info("[?]=> %s", eachline)
+    logg.debug("[?]<< %s", pattern)
+    logg.debug("[?]=> %s", eachline)
     return []
+
+def get_caller_name() -> str:
+    frame = inspect.currentframe().f_back.f_back  # type: ignore
+    return frame.f_code.co_name  # type: ignore
+def get_caller_caller_name() -> str:
+    frame = inspect.currentframe().f_back.f_back.f_back  # type: ignore
+    return frame.f_code.co_name  # type: ignore
 
 class GitExportMergeTest(TestCase):
     def caller_testname(self) -> str:
@@ -112,116 +162,118 @@ class GitExportMergeTest(TestCase):
             if not KEEP:
                 shutil.rmtree(newdir)
         return newdir
-    def test_1000(self) -> None:
+    def test_100(self) -> None:
         tmp = self.testdir()
         A = fs.join(tmp, "A")
-        out = sh(F"{GIT} {RUN} init -b main A", cwd=tmp)
-        self.assertTrue(greplines(out,"Initialized empty Git repository"))
-        out = sh(F"echo 'hello' > world.txt", cwd=A)
-        self.assertTrue(greplines(out, ""))
-        out = sh(F"{GIT} {RUN} add world.txt", cwd=A)
-        self.assertTrue(greplines(out, ""))
-        out = sh(F"{GIT} {RUN} commit -m hello-A world.txt", cwd=A)
-        self.assertTrue(greplines(out, "main .* hello-A"))
-        out = sh(F"{GIT} {RUN} log", cwd=A)
-        self.assertTrue(greplines(out, "commit ", " hello-A"))
+        std = sh(F"{GIT} {RUN} init -b main A", cwd=tmp)
+        self.assertTrue(greplines(std.out,"Initialized empty Git repository"))
+        std = sh(F"echo 'hello' > world.txt", cwd=A)
+        self.assertTrue(greplines(std.out, ""))
+        std = sh(F"{GIT} {RUN} add world.txt", cwd=A)
+        self.assertTrue(greplines(std.out, ""))
+        std = sh(F"{GIT} {RUN} commit -m hello-A world.txt", cwd=A)
+        self.assertTrue(greplines(std.out, "main .* hello-A"))
+        std = sh(F"{GIT} {RUN} log", cwd=A)
+        self.assertTrue(greplines(std.out, "commit ", " hello-A"))
         #
         sleep(2)
         #
         B = fs.join(tmp, "B")
-        out = sh(F"{GIT} {RUN} init -b main B", cwd=tmp)
-        self.assertTrue(greplines(out,"Initialized empty Git repository"))
-        out = sh(F"echo 'hello' > world.txt", cwd=B)
-        self.assertTrue(greplines(out, ""))
-        out = sh(F"{GIT} {RUN} add world.txt", cwd=B)
-        self.assertTrue(greplines(out, ""))
-        out = sh(F"{GIT} {RUN} commit -m hello-B world.txt", cwd=B)
-        self.assertTrue(greplines(out, "main .* hello-B"))
-        out = sh(F"{GIT} {RUN} log", cwd=B)
-        self.assertTrue(greplines(out, "commit ", " hello-B"))
+        std = sh(F"{GIT} {RUN} init -b main B", cwd=tmp)
+        self.assertTrue(greplines(std.out,"Initialized empty Git repository"))
+        std = sh(F"echo 'hello' > world.txt", cwd=B)
+        self.assertTrue(greplines(std.out, ""))
+        std = sh(F"{GIT} {RUN} add world.txt", cwd=B)
+        self.assertTrue(greplines(std.out, ""))
+        std = sh(F"{GIT} {RUN} commit -m hello-B world.txt", cwd=B)
+        self.assertTrue(greplines(std.out, "main .* hello-B"))
+        std = sh(F"{GIT} {RUN} log", cwd=B)
+        self.assertTrue(greplines(std.out, "commit ", " hello-B"))
         #
-        out = sh(F"{GIT} {RUN} fast-export HEAD > ../A.fi", cwd=A)
-        self.assertTrue(greplines(out, ""))
-        outA = sh(F"cat A.fi", cwd=tmp)
-        self.assertTrue(greplines(outA, "hello-A"))
-        out = sh(F"{GIT} {RUN} fast-export HEAD > ../B.fi", cwd=B)
-        self.assertTrue(greplines(out, ""))
-        outB = sh(F"cat B.fi", cwd=tmp)
-        self.assertTrue(greplines(outB, "hello-B"))
-        self.assertNotEqual(greplines(outA, "committer .*"), greplines(outB, "committer .*"))
+        std = sh(F"{GIT} {RUN} fast-export HEAD > ../A.fi", cwd=A)
+        self.assertTrue(greplines(std.out, ""))
+        catA = sh(F"cat A.fi", cwd=tmp)
+        self.assertTrue(greplines(catA.out, "hello-A"))
+        std = sh(F"{GIT} {RUN} fast-export HEAD > ../B.fi", cwd=B)
+        self.assertTrue(greplines(std.out, ""))
+        catB = sh(F"cat B.fi", cwd=tmp)
+        self.assertTrue(greplines(catB.out, "hello-B"))
+        self.assertNotEqual(greplines(catA.out, "committer .*"), greplines(catB.out, "committer .*"))
         #
         N = fs.join(tmp, "N")
         merge = fs.abspath(MERGE)
-        out = sh(F"{GIT} {RUN} init -b main N", cwd=tmp)
-        self.assertTrue(greplines(out, "Initialized empty"))
-        out = sh(F"{PYTHON} {merge} A.fi B.fi -o N.fi", cwd=tmp)
-        self.assertTrue(greplines(out, ""))
-        outN = sh(F"cat N.fi", cwd=tmp)
-        self.assertTrue(greplines(outN, "hello-A", "hello-B"))
-        out = sh(F"{GIT} {RUN} fast-import < ../N.fi", cwd=N)
-        self.assertTrue(greplines(out, ""))
-        out = sh(F"{GIT} {RUN} log", cwd=N)
-        self.assertTrue(greplines(out))
-        self.assertTrue(greplines(out, "hello-B", "hello-A"))
-        self.assertFalse(greplines(out, "license"))
+        std = sh(F"{GIT} {RUN} init -b main N", cwd=tmp)
+        self.assertTrue(greplines(std.out, "Initialized empty"))
+        std = sh(F"{PYTHON} {merge} A.fi B.fi -o N.fi", cwd=tmp)
+        self.assertTrue(greplines(std.out, ""))
+        catN = sh(F"cat N.fi", cwd=tmp)
+        self.assertTrue(greplines(catN.out, "hello-A", "hello-B"))
+        std = sh(F"{GIT} {RUN} fast-import < ../N.fi", cwd=N)
+        self.assertTrue(greplines(std.out, ""))
+        std = sh(F"{GIT} {RUN} log", cwd=N)
+        self.assertTrue(greplines(std.out, "hello-B", "hello-A"))
+        self.assertFalse(greplines(std.out, "license"))
         self.rm_testdir()
-    def test_2000(self) -> None:
+    def test_110(self) -> None:
         tmp = self.testdir()
         A = fs.join(tmp, "A")
-        out = sh(F"{GIT} {RUN} init -b main A", cwd=tmp)
-        logg.debug("out = %s", out)
-        out = sh(F"echo 'hello' > world.txt", cwd=A)
-        logg.debug("out = %s", out)
-        out = sh(F"{GIT} {RUN} add world.txt", cwd=A)
-        logg.debug("out = %s", out)
-        out = sh(F"{GIT} {RUN} commit -m hello-A world.txt", cwd=A)
-        logg.debug("out = %s", out)
-        out = sh(F"{GIT} {RUN} log", cwd=A)
-        logg.debug("out = %s", out)
+        std = sh(F"{GIT} {RUN} init -b main A", cwd=tmp)
+        self.assertTrue(greplines(std.out,"Initialized empty Git repository"))
+        std = sh(F"echo 'hello' > world.txt", cwd=A)
+        self.assertTrue(greplines(std.out, ""))
+        std = sh(F"{GIT} {RUN} add world.txt", cwd=A)
+        self.assertTrue(greplines(std.out, ""))
+        std = sh(F"{GIT} {RUN} commit -m hello-A world.txt", cwd=A)
+        self.assertTrue(greplines(std.out, "main .* hello-A"))
+        std = sh(F"{GIT} {RUN} log", cwd=A)
+        self.assertTrue(greplines(std.out, "commit ", " hello-A"))
         #
         sleep(2)
         #
         B = fs.join(tmp, "B")
-        out = sh(F"{GIT} {RUN} init -b main B", cwd=tmp)
-        logg.debug("out = %s", out)
-        out = sh(F"echo 'hello' > world.txt", cwd=B)
-        logg.debug("out = %s", out)
-        out = sh(F"{GIT} {RUN} add world.txt", cwd=B)
-        logg.debug("out = %s", out)
-        out = sh(F"{GIT} {RUN} commit -m hello-B world.txt", cwd=B)
-        logg.debug("out = %s", out)
-        out = sh(F"{GIT} {RUN} log", cwd=B)
-        logg.debug("out = %s", out)
+        std = sh(F"{GIT} {RUN} init -b main B", cwd=tmp)
+        self.assertTrue(greplines(std.out,"Initialized empty Git repository"))
+        std = sh(F"echo 'hello' > world.txt", cwd=B)
+        self.assertTrue(greplines(std.out, ""))
+        std = sh(F"{GIT} {RUN} add world.txt", cwd=B)
+        self.assertTrue(greplines(std.out, ""))
+        std = sh(F"{GIT} {RUN} commit -m hello-B world.txt", cwd=B)
+        self.assertTrue(greplines(std.out, "main .* hello-B"))
+        std = sh(F"{GIT} {RUN} log", cwd=B)
+        self.assertTrue(greplines(std.out, "commit ", " hello-B"))
         #
-        out = sh(F"{GIT} {RUN} fast-export HEAD > ../A.fi", cwd=A)
-        logg.debug("out = %s", out)
-        out = sh(F"{GIT} {RUN} fast-export HEAD > ../B.fi", cwd=B)
-        logg.debug("out = %s", out)
+        std = sh(F"{GIT} {RUN} fast-export HEAD > ../A.fi", cwd=A)
+        self.assertTrue(greplines(std.out, ""))
+        catA = sh(F"cat A.fi", cwd=tmp)
+        self.assertTrue(greplines(catA.out, "hello-A"))
+        std = sh(F"{GIT} {RUN} fast-export HEAD > ../B.fi", cwd=B)
+        self.assertTrue(greplines(std.out, ""))
+        catB = sh(F"cat B.fi", cwd=tmp)
+        self.assertTrue(greplines(catB.out, "hello-B"))
+        #
         merge = fs.abspath(MERGE)
-        #
         N = fs.join(tmp, "N")
-        out = sh(F"{GIT} {RUN} init -b main N", cwd=tmp)
-        logg.debug("out = %s", out)
-        out = sh(F"echo OK > LICENSE", cwd=N)
-        logg.debug("out = %s", out)
-        out = sh(F"{GIT} {RUN} add LICENSE", cwd=N)
-        logg.debug("out = %s", out)
-        out = sh(F"{GIT} {RUN} commit -m license LICENSE", cwd=N)
-        logg.debug("out = %s", out)
-        out = sh(F"{GIT} {RUN} rev-parse HEAD", cwd=N)
-        logg.debug("out = %s", out)
-        head = out.strip()
-        out = sh(F"{PYTHON} {merge} A.fi B.fi -o N.fi -H {head}", cwd=tmp)
-        logg.debug("out = %s", out)
-        out = sh(F"cat N.fi", cwd=tmp)
-        logg.debug("out = %s", out)
-        out = sh(F"{GIT} {RUN} fast-import < ../N.fi", cwd=N)
-        logg.debug("out = %s", out)
-        out = sh(F"{GIT} {RUN} log", cwd=N)
-        logg.debug("out = %s", out)
-        self.assertTrue(greps(out, "hello-A"))
-        self.assertTrue(greps(out, "hello-B"))
-        self.assertTrue(greps(out, "license"))
+        std = sh(F"{GIT} {RUN} init -b main N", cwd=tmp)
+        self.assertTrue(greplines(std.out, "Initialized empty"))
+        std = sh(F"echo OK > LICENSE", cwd=N)
+        self.assertTrue(greplines(std.out, ""))
+        std = sh(F"{GIT} {RUN} add LICENSE", cwd=N)
+        self.assertTrue(greplines(std.out, ""))
+        std = sh(F"{GIT} {RUN} commit -m license LICENSE", cwd=N)
+        self.assertTrue(greplines(std.out, "main .* license"))
+        std = sh(F"{GIT} {RUN} rev-parse HEAD", cwd=N)
+        self.assertTrue(greplines(std.out,"..........."))
+        head = std.out.strip()
+        std = sh(F"{PYTHON} {merge} A.fi B.fi -o N.fi -H {head} -L", cwd=tmp)
+        self.assertTrue(greplines(std.out, ""))
+        self.assertTrue(greplines(std.err, ""))
+        catN = sh(F"cat N.fi", cwd=tmp)
+        self.assertTrue(greplines(catN.out, "hello-A", "hello-B"))
+        std = sh(F"{GIT} {RUN} fast-import < ../N.fi", cwd=N)
+        self.assertTrue(greplines(std.out, ""))
+        self.assertTrue(greplines(std.err, "commits: *2"))
+        std = sh(F"{GIT} {RUN} log", cwd=N)
+        self.assertTrue(greplines(std.out, "hello-B", "hello-A", "license"))
         self.rm_testdir()
 
 if __name__ == "__main__":
