@@ -13,14 +13,18 @@ import os, sys, re
 import inspect
 from time import sleep
 from fnmatch import fnmatchcase as fnmatch
-from logging import getLogger, basicConfig, WARNING, INFO, addLevelName
+from logging import getLogger, basicConfig, WARNING, INFO, DEBUG, addLevelName
 
 NOTE = (WARNING+INFO)//2
+HINT = (DEBUG+INFO)//2
 EXEC = INFO+1
 TMP = INFO+2
+addLevelName(HINT, "HINT")
 addLevelName(NOTE, "NOTE")
 addLevelName(EXEC, "EXEC")
 addLevelName(TMP, "TMP")
+
+SHOWGRAPH = HINT
 
 logg = getLogger("TEST")
 KEEP = 0
@@ -231,7 +235,7 @@ class GitExportMergeTest(TestCase):
         self.assertTrue(greplines(std.out, ""))
         self.assertTrue(greplines(std.err, "commits: *2"))
         log = sh(F"{GIT} {RUN} log --graph", cwd=N)
-        logg.debug(">>>%s", log.out)
+        logg.log(SHOWGRAPH, ">>>\n%s", log.out)
         self.assertTrue(greplines(log.out, "hello-B", "hello-A"))
         self.assertFalse(greplines(log.out, "license"))
         self.assertFalse(greplines(log.out, "Merge:"))
@@ -294,7 +298,7 @@ class GitExportMergeTest(TestCase):
         self.assertTrue(greplines(std.err, "commits: *3"))
         self.assertTrue(greplines(std.out, ""))
         log = sh(F"{GIT} {RUN} log --graph", cwd=N)
-        logg.debug(">>>%s", log.out)
+        logg.log(SHOWGRAPH, ">>>\n%s", log.out)
         self.assertTrue(greplines(log.out, "hello-B", "hello-A"))
         self.assertFalse(greplines(log.out, "license"))
         self.assertFalse(greplines(log.out, "Merge:"))
@@ -357,7 +361,7 @@ class GitExportMergeTest(TestCase):
         self.assertTrue(greplines(std.err, "commits: *3"))
         self.assertTrue(greplines(std.out, ""))
         log = sh(F"{GIT} {RUN} log --graph", cwd=N)
-        logg.debug(">>>%s", log.out)
+        logg.log(SHOWGRAPH, ">>>\n%s", log.out)
         self.assertTrue(greplines(log.out, "hello-B", "hello-A"))
         self.assertFalse(greplines(log.out, "license"))
         self.assertTrue(greplines(log.out, "Merge:"))
@@ -422,7 +426,7 @@ class GitExportMergeTest(TestCase):
         self.assertTrue(greplines(std.out, ""))
         self.assertTrue(greplines(std.err, "commits: *2"))
         log = sh(F"{GIT} {RUN} log --graph", cwd=N)
-        logg.debug(">>>%s", log.out)
+        logg.log(SHOWGRAPH, ">>>\n%s", log.out)
         self.assertTrue(greplines(log.out, "hello-B", "hello-A", "license"))
         self.assertTrue(greplines(log.out, "license"))
         self.assertFalse(greplines(log.out, "Merge:"))
@@ -494,7 +498,7 @@ class GitExportMergeTest(TestCase):
         self.assertTrue(greplines(std.out, ""))
         self.assertTrue(greplines(std.err, "commits: *3"))
         log = sh(F"{GIT} {RUN} log --graph", cwd=N)
-        logg.debug(">>>%s", log.out)
+        logg.log(SHOWGRAPH, ">>>\n%s", log.out)
         self.assertTrue(greplines(log.out, "hello-B", "hello-A", "license"))
         self.assertTrue(greplines(log.out, "license"))
         self.assertFalse(greplines(log.out, "Merge:"))
@@ -566,7 +570,7 @@ class GitExportMergeTest(TestCase):
         self.assertTrue(greplines(std.out, ""))
         self.assertTrue(greplines(std.err, "commits: *3"))
         log = sh(F"{GIT} {RUN} log --graph", cwd=N)
-        logg.debug(">>>%s", log.out)
+        logg.log(SHOWGRAPH, ">>>\n%s", log.out)
         self.assertTrue(greplines(log.out, "hello-B", "hello-A", "license"))
         self.assertTrue(greplines(log.out, "license"))
         self.assertTrue(greplines(log.out, "Merge:"))
@@ -579,6 +583,8 @@ if __name__ == "__main__":
     cmdline.add_option("-v", "--verbose", action="count", default=0, help="more verbose logging")
     cmdline.add_option("-^", "--quiet", action="count", default=0, help="less verbose logging")
     cmdline.add_option("-k", "--keep", action="count", default=0, help="keep testdir")
+    cmdline.add_option("-S", "--showgraph", action="store_true", default=False,
+                       help="Show the final log-graph on each test. [%default]")
     cmdline.add_option("--failfast", action="store_true", default=False,
                        help="Stop the test run on the first error or failure. [%default]")
     cmdline.add_option("--xmlresults", metavar="FILE", default=None,
@@ -586,6 +592,8 @@ if __name__ == "__main__":
     opt, args = cmdline.parse_args()
     basicConfig(level=max(0,WARNING - 10 * opt.verbose + 10 * opt.quiet))
     KEEP = opt.keep
+    if opt.showgraph:
+        SHOWGRAPH=EXEC
     if not args:
         args = ["test_*"]
     suite = TestSuite()
