@@ -304,7 +304,7 @@ class Comment(NamedTuple):
 
 HISTORY = []
 
-def update_commit(data: str, frok: str, marks: Dict[str, NewMark], newfrom: str = ""):
+def update_commit(data: str, frok: str, marks: Dict[str, NewMark], newfrom: str = "") -> str:
     global HISTORY
     lines = []
     wait = "data"
@@ -417,7 +417,7 @@ def update_commit(data: str, frok: str, marks: Dict[str, NewMark], newfrom: str 
     HISTORY += [Comment(wasauthor, wastimespec, wascomment)]
     return "\n".join(lines)
 
-def update_blob(data: str, frok: str, marks: Dict[str, NewMark]):
+def update_blob(data: str, frok: str, marks: Dict[str, NewMark]) -> str:
     lines = []
     wait = "data"
     for line in data.splitlines():
