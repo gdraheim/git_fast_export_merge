@@ -23,14 +23,15 @@ RUN = "--no-pager"
 PYTHON = "python3"
 MERGE = "git_fast_export_merge.py"
 
-def sx(cmd: str, cwd: Optional[str] = None, shell: bool = True, **args: Any) -> str:
+def sx(cmd: str, cwd: Optional[str] = None, shell: bool = True, env={"LANG":"C"}, **args: Any) -> str:
     try:
-        return sh(cmd, cwd=cwd, shell=shell, **args)
+        return sh(cmd, cwd=cwd, shell=shell, env=env, **args)
     except Exception as e:
+        logg.debug("sh failed: %s", cmd)
         return ""
-def sh(cmd: str, cwd: Optional[str] = None, shell: bool = True, **args: Any) -> str:
+def sh(cmd: str, cwd: Optional[str] = None, shell: bool = True, env={"LANG":"C"}, **args: Any) -> str:
     logg.debug("sh %s", cmd)
-    return check_output(cmd, cwd=cwd, shell=shell, **args).decode("utf-8")
+    return check_output(cmd, cwd=cwd, shell=shell, env=env, **args).decode("utf-8")
 def get_caller_name() -> str:
     frame = inspect.currentframe().f_back.f_back  # type: ignore
     return frame.f_code.co_name  # type: ignore
@@ -57,6 +58,31 @@ def grep(pattern: str, lines: Union[str, List[str]]) -> Iterator[str]:
             yield line.rstrip()
 def greps(lines: Union[str, List[str]], pattern: str) -> List[str]:
     return list(grep(pattern, lines))
+def greplines(lines: Union[str, List[str]], *pattern: str) -> List[str]:
+    eachline = [line.rstrip() for line in _lines(lines) if line.rstrip()]
+    if not pattern:
+        logg.info("[*]=> %s", eachline)
+        return eachline
+    found = []
+    done = len(pattern)
+    look = 0
+    if done == 1 and pattern[0] == "" and not eachline:
+        return ["EMPTY"]
+    for line in eachline:
+        if not pattern[look]:
+            if not line.strip():
+                found.append(line)
+                look += 1
+                if look == done:
+                    return found
+        else:
+            if re.search(pattern[look], line.rstrip()):
+                found.append(line)
+                look +=1
+                if look == done:
+                    return found
+    logg.info("[?]=> %s", eachline)
+    return []
 
 class GitExportMergeTest(TestCase):
     def caller_testname(self) -> str:
@@ -90,50 +116,54 @@ class GitExportMergeTest(TestCase):
         tmp = self.testdir()
         A = fs.join(tmp, "A")
         out = sh(F"{GIT} {RUN} init -b main A", cwd=tmp)
-        logg.debug("out = %s", out)
+        self.assertTrue(greplines(out,"Initialized empty Git repository"))
         out = sh(F"echo 'hello' > world.txt", cwd=A)
-        logg.debug("out = %s", out)
+        self.assertTrue(greplines(out, ""))
         out = sh(F"{GIT} {RUN} add world.txt", cwd=A)
-        logg.debug("out = %s", out)
+        self.assertTrue(greplines(out, ""))
         out = sh(F"{GIT} {RUN} commit -m hello-A world.txt", cwd=A)
-        logg.debug("out = %s", out)
+        self.assertTrue(greplines(out, "main .* hello-A"))
         out = sh(F"{GIT} {RUN} log", cwd=A)
-        logg.debug("out = %s", out)
+        self.assertTrue(greplines(out, "commit ", " hello-A"))
         #
         sleep(2)
         #
         B = fs.join(tmp, "B")
         out = sh(F"{GIT} {RUN} init -b main B", cwd=tmp)
-        logg.debug("out = %s", out)
+        self.assertTrue(greplines(out,"Initialized empty Git repository"))
         out = sh(F"echo 'hello' > world.txt", cwd=B)
-        logg.debug("out = %s", out)
+        self.assertTrue(greplines(out, ""))
         out = sh(F"{GIT} {RUN} add world.txt", cwd=B)
-        logg.debug("out = %s", out)
+        self.assertTrue(greplines(out, ""))
         out = sh(F"{GIT} {RUN} commit -m hello-B world.txt", cwd=B)
-        logg.debug("out = %s", out)
+        self.assertTrue(greplines(out, "main .* hello-B"))
         out = sh(F"{GIT} {RUN} log", cwd=B)
-        logg.debug("out = %s", out)
+        self.assertTrue(greplines(out, "commit ", " hello-B"))
         #
         out = sh(F"{GIT} {RUN} fast-export HEAD > ../A.fi", cwd=A)
-        logg.debug("out = %s", out)
+        self.assertTrue(greplines(out, ""))
+        outA = sh(F"cat A.fi", cwd=tmp)
+        self.assertTrue(greplines(outA, "hello-A"))
         out = sh(F"{GIT} {RUN} fast-export HEAD > ../B.fi", cwd=B)
-        logg.debug("out = %s", out)
-        merge = fs.abspath(MERGE)
+        self.assertTrue(greplines(out, ""))
+        outB = sh(F"cat B.fi", cwd=tmp)
+        self.assertTrue(greplines(outB, "hello-B"))
+        self.assertNotEqual(greplines(outA, "committer .*"), greplines(outB, "committer .*"))
         #
         N = fs.join(tmp, "N")
+        merge = fs.abspath(MERGE)
         out = sh(F"{GIT} {RUN} init -b main N", cwd=tmp)
-        logg.debug("out = %s", out)
+        self.assertTrue(greplines(out, "Initialized empty"))
         out = sh(F"{PYTHON} {merge} A.fi B.fi -o N.fi", cwd=tmp)
-        logg.debug("out = %s", out)
-        out = sh(F"cat N.fi", cwd=tmp)
-        logg.debug("out = %s", out)
+        self.assertTrue(greplines(out, ""))
+        outN = sh(F"cat N.fi", cwd=tmp)
+        self.assertTrue(greplines(outN, "hello-A", "hello-B"))
         out = sh(F"{GIT} {RUN} fast-import < ../N.fi", cwd=N)
-        logg.debug("out = %s", out)
+        self.assertTrue(greplines(out, ""))
         out = sh(F"{GIT} {RUN} log", cwd=N)
-        logg.debug("out = %s", out)
-        self.assertTrue(greps(out, "hello-A"))
-        self.assertTrue(greps(out, "hello-B"))
-        self.assertFalse(greps(out, "license"))
+        self.assertTrue(greplines(out))
+        self.assertTrue(greplines(out, "hello-B", "hello-A"))
+        self.assertFalse(greplines(out, "license"))
         self.rm_testdir()
     def test_2000(self) -> None:
         tmp = self.testdir()
