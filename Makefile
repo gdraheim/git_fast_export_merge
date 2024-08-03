@@ -16,7 +16,10 @@ FOR=today
 help:
 	$(PYTHON3) $(SCRIPT) --help
 check:
+	$(MAKE) checkcode
 	$(MAKE) tests
+checkcode cc:
+	$(PYTHON3) _checkcode.py $(SCRIPT) $(TESTS)
 
 test tests: ; $(PYTHON3) $(TESTS) $V
 test_%: ; $(PYTHON3) $(TESTS) --failfast --showgraph $V $@ 
