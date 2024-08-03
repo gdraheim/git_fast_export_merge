@@ -246,13 +246,13 @@ def run(files: List[str]) -> None:
             commit = commit_from(blob)
             ignore = False
             for skip in SKIPAUTHORS:
-                skips = skip if "*" in skip else F"*{skip}*"
-                if fnmatch(commit.author, skips):
+                skippattern = skip if "*" in skip else F"*{skip}*"
+                if fnmatch(commit.author, skippattern):
                     ignore = True
                     break
             for skip in SKIPSUBJECT:
-                skips = skip if "*" in skip else F"*{skip}*"
-                if fnmatch(commit.subject, skips):
+                skippattern = skip if "*" in skip else F"*{skip}*"
+                if fnmatch(commit.subject, skippattern):
                     ignore = True
                     break
             if ignore:
@@ -392,7 +392,8 @@ def update_commit(data: str, frok: str, marks: Dict[str, NewMark], newfrom: str 
                     for replace in REPLACEAUTHORS:
                         if "=" in replace:
                             old, new = replace.split("=", 1)
-                            if fnmatch(author, old):
+                            oldpattern = old if "*" in old else F"*{old}*"
+                            if fnmatch(author, oldpattern):
                                 newline = "author "+new+timespec
                 else:
                     newline = line
@@ -530,9 +531,9 @@ if __name__ == "__main__":
                        help="and import --into=DIR from --output=FILE right away")
     cmdline.add_option("-c", "--committer", metavar="mail", default="",
                        help="defaults to author from ~/.gitconfig")
-    cmdline.add_option("--skipsubject", metavar="fixed-it", action="append", default=[],
+    cmdline.add_option("--skipsubject", metavar="*debug*", action="append", default=[],
                        help="skip commits matching some -m subject message")
-    cmdline.add_option("--skipauthor", metavar="*author@corp", action="append", default=[],
+    cmdline.add_option("--skipauthor", metavar="*author@corp*", action="append", default=[],
                        help="skip commits matching some author")
     cmdline.add_option("--replaceauthor", metavar="old=new", action="append", default=[],
                        help="replace author matched by left part")
