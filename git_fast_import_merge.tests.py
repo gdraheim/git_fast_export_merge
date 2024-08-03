@@ -17,10 +17,10 @@ from time import sleep
 from fnmatch import fnmatchcase as fnmatch
 from logging import getLogger, basicConfig, WARNING, INFO, DEBUG, addLevelName
 
-NOTE = (WARNING+INFO)//2
-HINT = (DEBUG+INFO)//2
-EXEC = INFO+1
-TMP = INFO+2
+NOTE = (WARNING + INFO) // 2
+HINT = (DEBUG + INFO) // 2
+EXEC = INFO + 1
+TMP = INFO + 2
 addLevelName(HINT, "HINT")
 addLevelName(NOTE, "NOTE")
 addLevelName(EXEC, "EXEC")
@@ -37,7 +37,7 @@ PYTHON = "python3"
 COVERAGE = "coverage3"
 MERGE = "git_fast_import_merge.py"
 TESTDIR = "tmp"
-COMMITHASH="[0-9a-h][0-9a-h][0-9a-h][0-9a-h][0-9a-h][0-9a-h][0-9a-h][0-9a-h][0-9a-h][0-9a-h][0-9a-h][0-9a-h][0-9a-h][0-9a-h]"
+COMMITHASH = "[0-9a-h][0-9a-h][0-9a-h][0-9a-h][0-9a-h][0-9a-h][0-9a-h][0-9a-h][0-9a-h][0-9a-h][0-9a-h][0-9a-h][0-9a-h][0-9a-h]"
 
 
 def sx__(cmd: str, cwd: Optional[str] = None, shell: bool = True, env: Mapping[str, str] = {"LANG": "C"}, **args: Any) -> str:
@@ -114,7 +114,7 @@ def sh_cat(filename: str, default: str = NIX, cwd: str = NIX) -> Run:
         filepath = filename
     if not fs.exists(filepath):
         logg.log(EXEC, "  cat %s  # does not exist", filename)
-        return Run(default, "does not exist: "+filename, 3)
+        return Run(default, "does not exist: " + filename, 3)
     else:
         text = open(filepath).read()
         lines = text.splitlines()
@@ -177,14 +177,14 @@ def greplines(lines: Union[str, List[str]], *pattern: str) -> List[str]:
     logg.debug("[?]=> %s", eachline)
     return []
 
-def loadworkspace(workspace: str, keeplinebreaks: bool =False) -> Dict[str, List[str]]:
+def loadworkspace(workspace: str, keeplinebreaks: bool = False) -> Dict[str, List[str]]:
     files: Dict[str, List[str]] = {}
     for dirpath, dirnames, filenames in os.walk(workspace):
-        if "/.git/" in ("/"+dirpath+"/"):
+        if "/.git/" in ("/" + dirpath + "/"):
             continue
         for name in filenames:
             filename = fs.join(dirpath, name)
-            workname = filename[len(workspace)+1:]
+            workname = filename[len(workspace) + 1:]
             logg.log(DEBUG, " wc '%s'", workname)
             text = decodes(open(filename).read())
             files[workname] = text.splitlines(keeplinebreaks)
@@ -296,7 +296,7 @@ class ImportMergeTest(TestCase):
         self.assertTrue(greplines(std.out, ""))
         #
         merge = fs.relpath(MERGE, tmp)
-        cover= F"{COVERAGE} run" if COVER else F"{PYTHON}"
+        cover = F"{COVERAGE} run" if COVER else F"{PYTHON}"
         std = sh(F"{cover} {merge} A.fi B.fi -o N.fi", cwd=tmp)
         self.assertTrue(greplines(std.out, ""))
         catN = sh_cat(F"N.fi", cwd=tmp)
@@ -311,10 +311,10 @@ class ImportMergeTest(TestCase):
         self.assertFalse(greplines(log.out, "license"))
         self.assertFalse(greplines(log.out, "Merge:"))
         #
-        M= fs.join(tmp, "M")
+        M = fs.join(tmp, "M")
         out = sh(F"{git} clone --local N M", cwd=tmp)
         files = loadworkspace(M)
-        wants = {"world.txt": ["hello"],}
+        wants = {"world.txt": ["hello"], }
         self.assertEqual(wants, files)
         self.rm_testdir()
 
@@ -378,12 +378,12 @@ class ImportMergeTest(TestCase):
         self.assertTrue(greplines(std.out, ""))
         #
         merge = fs.relpath(MERGE, tmp)
-        cover= F"{COVERAGE} run" if COVER else F"{PYTHON}"
+        cover = F"{COVERAGE} run" if COVER else F"{PYTHON}"
         std = sh(F"{cover} {merge} A.fi B.fi -o N.fi", cwd=tmp)
         self.assertTrue(greplines(std.out, ""))
         catN = sh_cat(F"N.fi", cwd=tmp)
         self.assertTrue(greplines(catN.out, "hello-A", "hello-B"))
-        self.assertFalse(greplines(catN.out, "merge :")) # !
+        self.assertFalse(greplines(catN.out, "merge :"))  # !
         #
         std = sh(F"{git} fast-import < ../N.fi", cwd=N)
         self.assertTrue(greplines(std.err, "commits: *3"))
@@ -395,10 +395,10 @@ class ImportMergeTest(TestCase):
         self.assertFalse(greplines(log.out, "license"))
         self.assertFalse(greplines(log.out, "Merge:"))
         #
-        M= fs.join(tmp, "M")
+        M = fs.join(tmp, "M")
         out = sh(F"{git} clone --local N M", cwd=tmp)
         files = loadworkspace(M)
-        wants = {"world.txt": ["again"],}
+        wants = {"world.txt": ["again"], }
         self.assertEqual(wants, files)
         self.rm_testdir()
 
@@ -462,7 +462,7 @@ class ImportMergeTest(TestCase):
         self.assertTrue(greplines(std.out, ""))
         #
         merge = fs.relpath(MERGE, tmp)
-        cover= F"{COVERAGE} run" if COVER else F"{PYTHON}"
+        cover = F"{COVERAGE} run" if COVER else F"{PYTHON}"
         std = sh(F"{cover} {merge} A.fi B.fi -o N.fi --merge", cwd=tmp)
         self.assertTrue(greplines(std.out, ""))
         catN = sh_cat(F"N.fi", cwd=tmp)
@@ -479,10 +479,10 @@ class ImportMergeTest(TestCase):
         self.assertFalse(greplines(log.out, "license"))
         self.assertTrue(greplines(log.out, "Merge:"))
         #
-        M= fs.join(tmp, "M")
+        M = fs.join(tmp, "M")
         out = sh(F"{git} clone --local N M", cwd=tmp)
         files = loadworkspace(M)
-        wants = {"world.txt": ["again"],}
+        wants = {"world.txt": ["again"], }
         self.assertEqual(wants, files)
         self.rm_testdir()
     def test_130(self) -> None:
@@ -545,7 +545,7 @@ class ImportMergeTest(TestCase):
         self.assertTrue(greplines(std.out, ""))
         #
         merge = fs.relpath(MERGE, tmp)
-        cover= F"{COVERAGE} run" if COVER else F"{PYTHON}"
+        cover = F"{COVERAGE} run" if COVER else F"{PYTHON}"
         std = sh(F"{cover} {merge} A.fi B.fi -o N.fi --merge --subdir travel", cwd=tmp)
         self.assertTrue(greplines(std.out, ""))
         catN = sh_cat(F"N.fi", cwd=tmp)
@@ -562,10 +562,10 @@ class ImportMergeTest(TestCase):
         self.assertFalse(greplines(log.out, "license"))
         self.assertTrue(greplines(log.out, "Merge:"))
         #
-        M= fs.join(tmp, "M")
+        M = fs.join(tmp, "M")
         out = sh(F"{git} clone --local N M", cwd=tmp)
         files = loadworkspace(M)
-        wants = {"travel/world.txt": ["again"],}
+        wants = {"travel/world.txt": ["again"], }
         self.assertEqual(wants, files)
         self.rm_testdir()
     def test_150(self) -> None:
@@ -628,12 +628,12 @@ class ImportMergeTest(TestCase):
         self.assertTrue(greplines(std.out, ""))
         #
         merge = fs.relpath(MERGE, tmp)
-        cover= F"{COVERAGE} run" if COVER else F"{PYTHON}"
+        cover = F"{COVERAGE} run" if COVER else F"{PYTHON}"
         std = sh(F"{cover} {merge} A.fi B.fi -o N.fi --replaceauthor 'Mr.B=Mrs.B <user@B>'", cwd=tmp)
         self.assertTrue(greplines(std.out, ""))
         catN = sh_cat(F"N.fi", cwd=tmp)
         self.assertTrue(greplines(catN.out, "hello-A", "hello-B"))
-        self.assertFalse(greplines(catN.out, "merge :")) # !
+        self.assertFalse(greplines(catN.out, "merge :"))  # !
         #
         std = sh(F"{git} fast-import < ../N.fi", cwd=N)
         self.assertTrue(greplines(std.err, "commits: *3"))
@@ -646,10 +646,10 @@ class ImportMergeTest(TestCase):
         self.assertFalse(greplines(log.out, "license"))
         self.assertFalse(greplines(log.out, "Merge:"))
         #
-        M= fs.join(tmp, "M")
+        M = fs.join(tmp, "M")
         out = sh(F"{git} clone --local N M", cwd=tmp)
         files = loadworkspace(M)
-        wants = {"world.txt": ["again"],}
+        wants = {"world.txt": ["again"], }
         self.assertEqual(wants, files)
         self.rm_testdir()
     def test_160(self) -> None:
@@ -712,16 +712,16 @@ class ImportMergeTest(TestCase):
         self.assertTrue(greplines(std.out, ""))
         #
         merge = fs.relpath(MERGE, tmp)
-        cover= F"{COVERAGE} run" if COVER else F"{PYTHON}"
+        cover = F"{COVERAGE} run" if COVER else F"{PYTHON}"
         std = sh(F"{cover} {merge} A.fi B.fi -o N.fi --skipauthor=Mr.B", cwd=tmp)
         self.assertTrue(greplines(std.out, ""))
         catN = sh_cat(F"N.fi", cwd=tmp)
         self.assertTrue(greplines(catN.out, "hello-A"))
-        self.assertFalse(greplines(catN.out, "hello-B")) # !
-        self.assertFalse(greplines(catN.out, "merge :")) # !
+        self.assertFalse(greplines(catN.out, "hello-B"))  # !
+        self.assertFalse(greplines(catN.out, "merge :"))  # !
         #
         std = sh(F"{git} fast-import < ../N.fi", cwd=N)
-        self.assertTrue(greplines(std.err, "commits: *2")) # !!
+        self.assertTrue(greplines(std.err, "commits: *2"))  # !!
         self.assertTrue(greplines(std.out, ""))
         log = sh(F"{git} log --graph", cwd=N)
         logg.log(SHOWGRAPH, ">>>\n%s", log.out)
@@ -730,10 +730,10 @@ class ImportMergeTest(TestCase):
         self.assertFalse(greplines(log.out, "license"))
         self.assertFalse(greplines(log.out, "Merge:"))
         #
-        M= fs.join(tmp, "M")
+        M = fs.join(tmp, "M")
         out = sh(F"{git} clone --local N M", cwd=tmp)
         files = loadworkspace(M)
-        wants = {"world.txt": ["again"],}
+        wants = {"world.txt": ["again"], }
         self.assertEqual(wants, files)
         self.rm_testdir()
 
@@ -797,7 +797,7 @@ class ImportMergeTest(TestCase):
         self.assertTrue(greplines(std.out, ""))
         #
         merge = fs.relpath(MERGE, tmp)
-        cover= F"{COVERAGE} run" if COVER else F"{PYTHON}"
+        cover = F"{COVERAGE} run" if COVER else F"{PYTHON}"
         std = sh(F"{cover} {merge} A.fi B.fi -o N.fi --skipauthor=Mr.B --merge", cwd=tmp)
         self.assertTrue(greplines(std.out, ""))
         catN = sh_cat(F"N.fi", cwd=tmp)
@@ -815,10 +815,10 @@ class ImportMergeTest(TestCase):
         self.assertFalse(greplines(log.out, "license"))
         self.assertFalse(greplines(log.out, "Merge:"))  # no merge anymore needed
         #
-        M= fs.join(tmp, "M")
+        M = fs.join(tmp, "M")
         out = sh(F"{git} clone --local N M", cwd=tmp)
         files = loadworkspace(M)
-        wants = {"world.txt": ["again"],}
+        wants = {"world.txt": ["again"], }
         self.assertEqual(wants, files)
         self.rm_testdir()
     def test_180(self) -> None:
@@ -881,7 +881,7 @@ class ImportMergeTest(TestCase):
         self.assertTrue(greplines(std.out, ""))
         #
         merge = fs.relpath(MERGE, tmp)
-        cover= F"{COVERAGE} run" if COVER else F"{PYTHON}"
+        cover = F"{COVERAGE} run" if COVER else F"{PYTHON}"
         std = sh(F"{cover} {merge} A.fi B.fi -o N.fi --skipsubject=hello-B --merge", cwd=tmp)
         self.assertTrue(greplines(std.out, ""))
         catN = sh_cat(F"N.fi", cwd=tmp)
@@ -899,10 +899,10 @@ class ImportMergeTest(TestCase):
         self.assertFalse(greplines(log.out, "license"))
         self.assertFalse(greplines(log.out, "Merge:"))  # no merge anymore needed
         #
-        M= fs.join(tmp, "M")
+        M = fs.join(tmp, "M")
         out = sh(F"{git} clone --local N M", cwd=tmp)
         files = loadworkspace(M)
-        wants = {"world.txt": ["again"],}
+        wants = {"world.txt": ["again"], }
         self.assertEqual(wants, files)
         self.rm_testdir()
 
@@ -963,7 +963,7 @@ class ImportMergeTest(TestCase):
         self.assertTrue(greplines(std.out, "main .* license"))
         #
         merge = fs.relpath(MERGE, tmp)
-        cover= F"{COVERAGE} run" if COVER else F"{PYTHON}"
+        cover = F"{COVERAGE} run" if COVER else F"{PYTHON}"
         std = sh(F"{git} rev-parse HEAD", cwd=N)
         self.assertTrue(greplines(std.out, COMMITHASH))
         head = std.out.strip()
@@ -982,7 +982,7 @@ class ImportMergeTest(TestCase):
         self.assertTrue(greplines(log.out, "license"))
         self.assertFalse(greplines(log.out, "Merge:"))
         #
-        M= fs.join(tmp, "M")
+        M = fs.join(tmp, "M")
         out = sh(F"{git} clone --local N M", cwd=tmp)
         files = loadworkspace(M)
         wants = {"world.txt": ["hello"], 'LICENSE': ['OK']}
@@ -1053,7 +1053,7 @@ class ImportMergeTest(TestCase):
         self.assertTrue(greplines(std.out, "main .* license"))
         #
         merge = fs.relpath(MERGE, tmp)
-        cover= F"{COVERAGE} run" if COVER else F"{PYTHON}"
+        cover = F"{COVERAGE} run" if COVER else F"{PYTHON}"
         std = sh(F"{git} rev-parse HEAD", cwd=N)
         self.assertTrue(greplines(std.out, COMMITHASH))
         head = std.out.strip()
@@ -1076,7 +1076,7 @@ class ImportMergeTest(TestCase):
         self.assertTrue(greplines(log.out, "license"))
         self.assertFalse(greplines(log.out, "Merge:"))
         #
-        M= fs.join(tmp, "M")
+        M = fs.join(tmp, "M")
         out = sh(F"{git} clone --local N M", cwd=tmp)
         files = loadworkspace(M)
         wants = {"world.txt": ["again"], 'LICENSE': ['OK']}
@@ -1147,7 +1147,7 @@ class ImportMergeTest(TestCase):
         self.assertTrue(greplines(std.out, "main .* license"))
         #
         merge = fs.relpath(MERGE, tmp)
-        cover= F"{COVERAGE} run" if COVER else F"{PYTHON}"
+        cover = F"{COVERAGE} run" if COVER else F"{PYTHON}"
         std = sh(F"{git} rev-parse HEAD", cwd=N)
         self.assertTrue(greplines(std.out, COMMITHASH))
         head = std.out.strip()
@@ -1170,7 +1170,7 @@ class ImportMergeTest(TestCase):
         self.assertTrue(greplines(log.out, "license"))
         self.assertTrue(greplines(log.out, "Merge:"))
         #
-        M= fs.join(tmp, "M")
+        M = fs.join(tmp, "M")
         out = sh(F"{git} clone --local N M", cwd=tmp)
         files = loadworkspace(M)
         wants = {"world.txt": ["again"], 'LICENSE': ['OK']}
@@ -1241,7 +1241,7 @@ class ImportMergeTest(TestCase):
         self.assertTrue(greplines(std.out, "main .* license"))
         #
         merge = fs.relpath(MERGE, tmp)
-        cover= F"{COVERAGE} run" if COVER else F"{PYTHON}"
+        cover = F"{COVERAGE} run" if COVER else F"{PYTHON}"
         std = sh(F"{git} rev-parse HEAD", cwd=N)
         self.assertTrue(greplines(std.out, COMMITHASH))
         head = std.out.strip()
@@ -1264,7 +1264,7 @@ class ImportMergeTest(TestCase):
         self.assertTrue(greplines(log.out, "license"))
         self.assertTrue(greplines(log.out, "Merge:"))
         #
-        M= fs.join(tmp, "M")
+        M = fs.join(tmp, "M")
         out = sh(F"{git} clone --local N M", cwd=tmp)
         files = loadworkspace(M)
         wants = {"travel/world.txt": ["again"], 'LICENSE': ['OK']}
@@ -1334,7 +1334,7 @@ class ImportMergeTest(TestCase):
         self.assertTrue(greplines(std.out, "main .* license"))
         #
         merge = fs.relpath(MERGE, tmp)
-        cover= F"{COVERAGE} run" if COVER else F"{PYTHON}"
+        cover = F"{COVERAGE} run" if COVER else F"{PYTHON}"
         std = sh(F"{git} rev-parse HEAD", cwd=N)
         self.assertTrue(greplines(std.out, COMMITHASH))
         head = std.out.strip()
@@ -1358,7 +1358,7 @@ class ImportMergeTest(TestCase):
         self.assertTrue(greplines(log.out, "license"))
         self.assertFalse(greplines(log.out, "Merge:"))
         #
-        M= fs.join(tmp, "M")
+        M = fs.join(tmp, "M")
         out = sh(F"{git} clone --local N M", cwd=tmp)
         files = loadworkspace(M)
         wants = {"world.txt": ["again"], 'LICENSE': ['OK']}
@@ -1429,7 +1429,7 @@ class ImportMergeTest(TestCase):
         self.assertTrue(greplines(std.out, "main .* license"))
         #
         merge = fs.relpath(MERGE, tmp)
-        cover= F"{COVERAGE} run" if COVER else F"{PYTHON}"
+        cover = F"{COVERAGE} run" if COVER else F"{PYTHON}"
         std = sh(F"{git} rev-parse HEAD", cwd=N)
         self.assertTrue(greplines(std.out, COMMITHASH))
         head = std.out.strip()
@@ -1453,7 +1453,7 @@ class ImportMergeTest(TestCase):
         self.assertTrue(greplines(log.out, "license"))
         self.assertFalse(greplines(log.out, "Merge:"))
         #
-        M= fs.join(tmp, "M")
+        M = fs.join(tmp, "M")
         out = sh(F"{git} clone --local N M", cwd=tmp)
         files = loadworkspace(M)
         wants = {"world.txt": ["again"], 'LICENSE': ['OK']}
@@ -1524,7 +1524,7 @@ class ImportMergeTest(TestCase):
         self.assertTrue(greplines(std.out, "main .* license"))
         #
         merge = fs.relpath(MERGE, tmp)
-        cover= F"{COVERAGE} run" if COVER else F"{PYTHON}"
+        cover = F"{COVERAGE} run" if COVER else F"{PYTHON}"
         std = sh(F"{git} rev-parse HEAD", cwd=N)
         self.assertTrue(greplines(std.out, COMMITHASH))
         head = std.out.strip()
@@ -1548,7 +1548,7 @@ class ImportMergeTest(TestCase):
         self.assertTrue(greplines(log.out, "license"))
         self.assertFalse(greplines(log.out, "Merge:"))  # not needed anymore
         #
-        M= fs.join(tmp, "M")
+        M = fs.join(tmp, "M")
         out = sh(F"{git} clone --local N M", cwd=tmp)
         files = loadworkspace(M)
         wants = {"world.txt": ["again"], 'LICENSE': ['OK']}
@@ -1618,7 +1618,7 @@ class ImportMergeTest(TestCase):
         self.assertTrue(greplines(std.out, "main .* license"))
         #
         merge = fs.relpath(MERGE, tmp)
-        cover= F"{COVERAGE} run" if COVER else F"{PYTHON}"
+        cover = F"{COVERAGE} run" if COVER else F"{PYTHON}"
         std = sh(F"{git} rev-parse HEAD", cwd=N)
         self.assertTrue(greplines(std.out, COMMITHASH))
         head = std.out.strip()
@@ -1642,7 +1642,7 @@ class ImportMergeTest(TestCase):
         self.assertTrue(greplines(log.out, "license"))
         self.assertFalse(greplines(log.out, "Merge:"))  # not needed anymore
         #
-        M= fs.join(tmp, "M")
+        M = fs.join(tmp, "M")
         out = sh(F"{git} clone --local N M", cwd=tmp)
         files = loadworkspace(M)
         wants = {"world.txt": ["again"], 'LICENSE': ['OK']}

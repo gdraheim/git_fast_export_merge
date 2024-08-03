@@ -22,9 +22,9 @@ import os.path as fs
 import re
 import sys
 
-DONE = (WARNING+ERROR)//2
-NOTE = (WARNING+INFO)//2
-HINT = (DEBUG+INFO)//2
+DONE = (WARNING + ERROR) // 2
+NOTE = (WARNING + INFO) // 2
+HINT = (DEBUG + INFO) // 2
 addLevelName(DONE, "DONE")
 addLevelName(NOTE, "NOTE")
 addLevelName(HINT, "HINT")
@@ -233,7 +233,7 @@ def run(files: List[str]) -> None:
     for blob in blobs:
         frommark = blob.fromfile.mark
         blobmark = blob.mark
-        blobmap[frommark+blobmark] = blob
+        blobmap[frommark + blobmark] = blob
     logg.log(NOTE, "loaded %s blobs, blobmap %s blobs",
              len(blobs), len(blobmap.keys()))
     numcommits = 0
@@ -273,7 +273,7 @@ def run(files: List[str]) -> None:
                     logg.warning("could not find %s:", lookup)
             updates[blobref] = Update(commit, commit.time, fileinfos)
     logg.log(NOTE, "loaded %s blobs, %s commits + %s changes = %s",
-             len(blobs), numcommits, numchanges, numcommits+numchanges)
+             len(blobs), numcommits, numchanges, numcommits + numchanges)
     base = 1000
     if len(blobs) >= 1000:
         base = 10000
@@ -291,7 +291,7 @@ def run(files: List[str]) -> None:
             filename = fileinfo.filename
             num = base + len(newmarks)
             newnum = ":%i" % num
-            newmarks[frok+mark] = NewMark(blob.fromfile, blob.mark, newnum)
+            newmarks[frok + mark] = NewMark(blob.fromfile, blob.mark, newnum)
             logg.info("  file %s%s %s %s", frok, mark, newnum, filename)
             imp = Import(blob, blob.command, newnum, update.time)
             imports += [imp]
@@ -300,7 +300,7 @@ def run(files: List[str]) -> None:
         blob = update.commit.blob
         mark = blob.mark
         frok = blob.fromfile.mark
-        newmarks[frok+mark] = NewMark(blob.fromfile, blob.mark, newnum)
+        newmarks[frok + mark] = NewMark(blob.fromfile, blob.mark, newnum)
         logg.info("    up %s %s <- %s", ref, newnum, blob.mark)
         imp = Import(blob, blob.command, newnum, update.time)
         imports += [imp]
@@ -364,20 +364,20 @@ def update_commit(data: str, frok: str, marks: Dict[str, NewMark], newfrom: str 
             if line.startswith("from :"):
                 oldfrom = line[len("from "):].strip()
                 if newfrom.strip():
-                    lines += ["from "+newfrom.strip()]
+                    lines += ["from " + newfrom.strip()]
                     donemark = True
-                    oldref = frok+oldfrom
+                    oldref = frok + oldfrom
                     if oldref in marks:
                         newmark = marks[oldref].newmark
                         if newmark != newfrom.strip() and newfrom.startswith(":") and MERGES:
-                            lines += ["merge "+newmark]
+                            lines += ["merge " + newmark]
                 continue
             if line.startswith("merge :"):
                 continue
             if line.startswith("committer "):
                 if COMMITTER and ">" in line:
                     timespec = line.split(">", 1)[1]
-                    newline = "committer "+COMMITTER+timespec
+                    newline = "committer " + COMMITTER + timespec
                     wastimespec = timespec
                 else:
                     newline = line
@@ -394,20 +394,20 @@ def update_commit(data: str, frok: str, marks: Dict[str, NewMark], newfrom: str 
                             old, new = replace.split("=", 1)
                             oldpattern = old if "*" in old else F"*{old}*"
                             if fnmatch(author, oldpattern):
-                                newline = "author "+new+timespec
+                                newline = "author " + new + timespec
                 else:
                     newline = line
                 lines += [newline]
                 continue
             if line.startswith("mark :"):
                 oldmark = line[5:].strip()
-                oldref = frok+oldmark
+                oldref = frok + oldmark
                 if oldref in marks:
                     newmark = marks[oldref].newmark
                 else:
                     logg.error("did not find oldmark %s", oldref)
                     newmark = oldmark
-                lines += ["mark "+newmark]
+                lines += ["mark " + newmark]
             else:
                 lines += [line]
         elif wait == "end":
@@ -417,24 +417,24 @@ def update_commit(data: str, frok: str, marks: Dict[str, NewMark], newfrom: str 
             if line.startswith("from :"):
                 oldfrom = line[len("from "):].strip()
                 if newfrom.strip():
-                    lines += ["from "+newfrom.strip()]
+                    lines += ["from " + newfrom.strip()]
                     donemark = True
-                    oldref = frok+oldfrom
+                    oldref = frok + oldfrom
                     if oldref in marks:
                         newmark = marks[oldref].newmark
                         if newmark != newfrom.strip() and newfrom.startswith(":") and MERGES:
-                            lines += ["merge "+newmark]
+                            lines += ["merge " + newmark]
                 continue
             if line.startswith("merge :"):
                 continue
             if line and line[1:].startswith(" 100"):
                 if newfrom.strip() and not donemark:
-                    lines += ["from "+newfrom.strip()]
+                    lines += ["from " + newfrom.strip()]
                     donemark = True
                 m = re.match("(\\S) (\\d+) (\\S+) (.*)", line)
                 if m:
                     oldmark = m.group(3)
-                    oldref = frok+oldmark
+                    oldref = frok + oldmark
                     if oldref in marks:
                         newmark = marks[oldref].newmark
                     else:
@@ -468,13 +468,13 @@ def update_blob(data: str, frok: str, marks: Dict[str, NewMark]) -> str:
                 continue
             if line.startswith("mark :"):
                 oldmark = line[5:].strip()
-                oldref = frok+oldmark
+                oldref = frok + oldmark
                 if oldref in marks:
                     newmark = marks[oldref].newmark
                 else:
                     logg.error("did not find oldmark %s", oldref)
                     newmark = oldmark
-                lines += ["mark "+newmark]
+                lines += ["mark " + newmark]
             else:
                 lines += [line]
         else:
