@@ -18,6 +18,9 @@ help:
 
 test: ; $(PYTHON3) $(TESTS) $V
 test_%: ; $(PYTHON3) $(TESTS) --failfast --showgraph $V $@ 
+t_%: ; $(PYTHON3) $(TESTS) --failfast --showgraph $V tes$@ 
+
+cover coverage: ; $(PYTHON3) $(TESTS) $V --cover
 
 clean:
 	- rm *.pyc 

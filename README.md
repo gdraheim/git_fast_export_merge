@@ -1,3 +1,7 @@
+[![Code Coverage](https://img.shields.io/badge/9%20test-85%25%20coverage-brightgreen)](https://github.com/gdraheim/git_fast_import_merge/blob/main/git_fast_import_merge.tests.py)
+[![PyPI version](https://badge.fury.io/py/git_fast_import_merge.svg)](https://pypi.org/project/git_fast_import_merge/)
+
+
 # git fast-import merge
 
 The `git_fast_import_merge.py` tool can read multiple archive files from 'git fast-export' 
@@ -38,6 +42,6 @@ If you have a target repo then you can get that information like this:
 Provide these as `--head=hash-of-commit --date=date-of-commit`
 
 If you say `--into=./path/to/workspace` then the tool will run these commands itself.
-And adding `--import` the the fast-import will run on the into-workspace right-away.
+And adding `--import` then the fast-import will run on the into-workspace right-away.
 However this is completely optional.
 

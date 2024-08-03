@@ -34,7 +34,10 @@ NIX = ""
 GIT = "git"
 RUN = "--no-pager"
 PYTHON = "python3"
+COVERAGE = "coverage3"
 MERGE = "git_fast_import_merge.py"
+TESTDIR = "tmp"
+COMMITHASH="[0-9a-h][0-9a-h][0-9a-h][0-9a-h][0-9a-h][0-9a-h][0-9a-h][0-9a-h][0-9a-h][0-9a-h][0-9a-h][0-9a-h][0-9a-h][0-9a-h]"
 
 
 def sx__(cmd: str, cwd: Optional[str] = None, shell: bool = True, env: Mapping[str, str] = {"LANG": "C"}, **args: Any) -> str:
@@ -218,19 +221,23 @@ class ImportMergeTest(TestCase):
 
     def testdir(self, testname: Optional[str] = None, keep: bool = False) -> str:
         testname = testname or self.caller_testname()
-        newdir = "tmp/tmp." + testname
+        newdir = fs.join(TESTDIR, testname)
         if fs.isdir(newdir) and not keep:
             shutil.rmtree(newdir)
         if not fs.isdir(newdir):
             os.makedirs(newdir)
             logg.log(TMP, "==================== %s", newdir)
-            # logg.log(TMP, ".................... %s", newdir)
         return newdir
 
     def rm_testdir(self, testname: Optional[str] = None) -> str:
         testname = testname or self.caller_testname()
-        newdir = "tmp/tmp." + testname
+        newdir = fs.join(TESTDIR, testname)
         if fs.isdir(newdir):
+            testcoverage = fs.join(newdir, ".coverage")
+            savecoverage = fs.join(TESTDIR, F"{testname}.coverage")
+            if fs.exists(testcoverage):
+                logg.debug("%s -> %s", testcoverage, savecoverage)
+                os.replace(testcoverage, savecoverage)
             if not KEEP:
                 shutil.rmtree(newdir)
             else:
@@ -239,7 +246,6 @@ class ImportMergeTest(TestCase):
 
     def test_100(self) -> None:
         """ import to empty repo"""
-        py = F"{PYTHON}"
         git = F"{GIT} {RUN}"
         tmp = self.testdir()
         A = fs.join(tmp, "A")
@@ -284,15 +290,18 @@ class ImportMergeTest(TestCase):
                             greplines(catB.out, "committer .*"))
         #
         N = fs.join(tmp, "N")
-        merge = fs.abspath(MERGE)
         std = sh(F"{git} init -b main N", cwd=tmp)
         self.assertTrue(greplines(std.out, "Initialized empty"))
         std = sh(F"{git} config user.name Mr.N && {git} config user.email user@N", cwd=N)
         self.assertTrue(greplines(std.out, ""))
-        std = sh(F"{py} {merge} A.fi B.fi -o N.fi", cwd=tmp)
+        #
+        merge = fs.relpath(MERGE, tmp)
+        cover= F"{COVERAGE} run" if COVER else F"{PYTHON}"
+        std = sh(F"{cover} {merge} A.fi B.fi -o N.fi", cwd=tmp)
         self.assertTrue(greplines(std.out, ""))
         catN = sh_cat(F"N.fi", cwd=tmp)
         self.assertTrue(greplines(catN.out, "hello-A", "hello-B"))
+        #
         std = sh(F"{git} fast-import < ../N.fi", cwd=N)
         self.assertTrue(greplines(std.out, ""))
         self.assertTrue(greplines(std.err, "commits: *2"))
@@ -363,16 +372,19 @@ class ImportMergeTest(TestCase):
                             greplines(catB.out, "committer .*"))
         #
         N = fs.join(tmp, "N")
-        merge = fs.abspath(MERGE)
         std = sh(F"{git} init -b main N", cwd=tmp)
         self.assertTrue(greplines(std.out, "Initialized empty"))
         std = sh(F"{git} config user.name Mr.N && {git} config user.email user@N", cwd=N)
         self.assertTrue(greplines(std.out, ""))
-        std = sh(F"{py} {merge} A.fi B.fi -o N.fi", cwd=tmp)
+        #
+        merge = fs.relpath(MERGE, tmp)
+        cover= F"{COVERAGE} run" if COVER else F"{PYTHON}"
+        std = sh(F"{cover} {merge} A.fi B.fi -o N.fi", cwd=tmp)
         self.assertTrue(greplines(std.out, ""))
         catN = sh_cat(F"N.fi", cwd=tmp)
         self.assertTrue(greplines(catN.out, "hello-A", "hello-B"))
-        self.assertFalse(greplines(catN.out, "merge :"))  # !
+        self.assertFalse(greplines(catN.out, "merge :")) # !
+        #
         std = sh(F"{git} fast-import < ../N.fi", cwd=N)
         self.assertTrue(greplines(std.err, "commits: *3"))
         self.assertTrue(greplines(std.out, ""))
@@ -443,16 +455,19 @@ class ImportMergeTest(TestCase):
                             greplines(catB.out, "committer .*"))
         #
         N = fs.join(tmp, "N")
-        merge = fs.abspath(MERGE)
         std = sh(F"{git} init -b main N", cwd=tmp)
         self.assertTrue(greplines(std.out, "Initialized empty"))
         std = sh(F"{git} config user.name Mr.N && {git} config user.email user@N", cwd=N)
         self.assertTrue(greplines(std.out, ""))
-        std = sh(F"{py} {merge} A.fi B.fi -o N.fi --merge", cwd=tmp)
+        #
+        merge = fs.relpath(MERGE, tmp)
+        cover= F"{COVERAGE} run" if COVER else F"{PYTHON}"
+        std = sh(F"{cover} {merge} A.fi B.fi -o N.fi --merge", cwd=tmp)
         self.assertTrue(greplines(std.out, ""))
         catN = sh_cat(F"N.fi", cwd=tmp)
         self.assertTrue(greplines(catN.out, "hello-A", "hello-B"))
         self.assertTrue(greplines(catN.out, "merge :"))
+        #
         std = sh(F"{git} fast-import < ../N.fi", cwd=N)
         self.assertTrue(greplines(std.err, "commits: *3"))
         self.assertTrue(greplines(std.out, ""))
@@ -522,16 +537,19 @@ class ImportMergeTest(TestCase):
                             greplines(catB.out, "committer .*"))
         #
         N = fs.join(tmp, "N")
-        merge = fs.abspath(MERGE)
         std = sh(F"{git} init -b main N", cwd=tmp)
         self.assertTrue(greplines(std.out, "Initialized empty"))
         std = sh(F"{git} config user.name Mr.N && {git} config user.email user@N", cwd=N)
         self.assertTrue(greplines(std.out, ""))
-        std = sh(F"{py} {merge} A.fi B.fi -o N.fi --merge --subdir travel", cwd=tmp)
+        #
+        merge = fs.relpath(MERGE, tmp)
+        cover= F"{COVERAGE} run" if COVER else F"{PYTHON}"
+        std = sh(F"{cover} {merge} A.fi B.fi -o N.fi --merge --subdir travel", cwd=tmp)
         self.assertTrue(greplines(std.out, ""))
         catN = sh_cat(F"N.fi", cwd=tmp)
         self.assertTrue(greplines(catN.out, "hello-A", "hello-B"))
         self.assertTrue(greplines(catN.out, "merge :"))
+        #
         std = sh(F"{git} fast-import < ../N.fi", cwd=N)
         self.assertTrue(greplines(std.err, "commits: *3"))
         self.assertTrue(greplines(std.out, ""))
@@ -592,7 +610,6 @@ class ImportMergeTest(TestCase):
         catB = sh_cat("B.fi", cwd=tmp)
         self.assertTrue(greplines(catB.out, "hello-B"))
         #
-        merge = fs.abspath(MERGE)
         N = fs.join(tmp, "N")
         std = sh(F"{git} init -b main N", cwd=tmp)
         self.assertTrue(greplines(std.out, "Initialized empty"))
@@ -604,15 +621,18 @@ class ImportMergeTest(TestCase):
         self.assertTrue(greplines(std.out, ""))
         std = sh(F"{git} commit -m license LICENSE", cwd=N)
         self.assertTrue(greplines(std.out, "main .* license"))
+        #
+        merge = fs.relpath(MERGE, tmp)
+        cover= F"{COVERAGE} run" if COVER else F"{PYTHON}"
         std = sh(F"{git} rev-parse HEAD", cwd=N)
-        self.assertTrue(greplines(std.out, "..........."))
+        self.assertTrue(greplines(std.out, COMMITHASH))
         head = std.out.strip()
-        logg.info("- using HEAD %s", head)
-        std = sh(F"{py} {merge} A.fi B.fi -o N.fi -H {head} -L", cwd=tmp)
+        std = sh(F"{cover} {merge} A.fi B.fi -o N.fi --head {head} -L", cwd=tmp)
         self.assertTrue(greplines(std.out, ""))
         self.assertTrue(greplines(std.err, ""))
         catN = sh_cat("N.fi", cwd=tmp)
         self.assertTrue(greplines(catN.out, "hello-A", "hello-B"))
+        #
         std = sh(F"{git} fast-import < ../N.fi", cwd=N)
         self.assertTrue(greplines(std.out, ""))
         self.assertTrue(greplines(std.err, "commits: *2"))
@@ -680,7 +700,6 @@ class ImportMergeTest(TestCase):
         catB = sh_cat("B.fi", cwd=tmp)
         self.assertTrue(greplines(catB.out, "hello-B"))
         #
-        merge = fs.abspath(MERGE)
         N = fs.join(tmp, "N")
         std = sh(F"{git} init -b main N", cwd=tmp)
         self.assertTrue(greplines(std.out, "Initialized empty"))
@@ -692,23 +711,24 @@ class ImportMergeTest(TestCase):
         self.assertTrue(greplines(std.out, ""))
         std = sh(F"{git} commit -m license LICENSE", cwd=N)
         self.assertTrue(greplines(std.out, "main .* license"))
+        #
+        merge = fs.relpath(MERGE, tmp)
+        cover= F"{COVERAGE} run" if COVER else F"{PYTHON}"
         std = sh(F"{git} rev-parse HEAD", cwd=N)
-        self.assertTrue(greplines(std.out, "..........."))
+        self.assertTrue(greplines(std.out, COMMITHASH))
         head = std.out.strip()
-        logg.info("- using HEAD %s", head)
-        std = sh(F"{py} {merge} A.fi B.fi -o N.fi -H {head} -L", cwd=tmp)
+        std = sh(F"{cover} {merge} A.fi B.fi -o N.fi --head {head} -L", cwd=tmp)
         self.assertTrue(greplines(std.out, ""))
         self.assertTrue(greplines(std.err, ""))
         catN = sh_cat("N.fi", cwd=tmp)
         self.assertTrue(greplines(catN.out, "hello-A", "hello-B"))
+        #
         std = sh(F"{git} fast-import < ../N.fi", cwd=N)
         self.assertTrue(greplines(std.out, ""))
         self.assertTrue(greplines(std.err, "commits: *3"))
         std = sh(F"{git} rev-parse HEAD", cwd=N)
-        self.assertTrue(greplines(std.out, "..........."))
-        newhead = std.out.strip()
-        logg.info("--- new HEAD %s", newhead)
-        self.assertNotEqual(head, newhead)
+        self.assertTrue(greplines(std.out, COMMITHASH))
+        self.assertNotEqual(head, std.out.strip())
         log = sh(F"{git} log --graph", cwd=N)
         logg.log(SHOWGRAPH, ">>>\n%s", log.out)
         self.assertTrue(greplines(log.out, "hello-B", "hello-A", "license"))
@@ -773,7 +793,6 @@ class ImportMergeTest(TestCase):
         catB = sh_cat("B.fi", cwd=tmp)
         self.assertTrue(greplines(catB.out, "hello-B"))
         #
-        merge = fs.abspath(MERGE)
         N = fs.join(tmp, "N")
         std = sh(F"{git} init -b main N", cwd=tmp)
         self.assertTrue(greplines(std.out, "Initialized empty"))
@@ -785,24 +804,24 @@ class ImportMergeTest(TestCase):
         self.assertTrue(greplines(std.out, ""))
         std = sh(F"{git} commit -m license LICENSE", cwd=N)
         self.assertTrue(greplines(std.out, "main .* license"))
+        #
+        merge = fs.relpath(MERGE, tmp)
+        cover= F"{COVERAGE} run" if COVER else F"{PYTHON}"
         std = sh(F"{git} rev-parse HEAD", cwd=N)
-        self.assertTrue(greplines(std.out, "..........."))
+        self.assertTrue(greplines(std.out, COMMITHASH))
         head = std.out.strip()
-        logg.info("- using HEAD %s", head)
-        std = sh(
-            F"{py} {merge} A.fi B.fi -o N.fi -H {head} -L --merge", cwd=tmp)
+        std = sh(F"{cover} {merge} A.fi B.fi -o N.fi --head {head} -L --merge", cwd=tmp)
         self.assertTrue(greplines(std.out, ""))
         self.assertTrue(greplines(std.err, ""))
         catN = sh_cat("N.fi", cwd=tmp)
         self.assertTrue(greplines(catN.out, "hello-A", "hello-B"))
+        #
         std = sh(F"{git} fast-import < ../N.fi", cwd=N)
         self.assertTrue(greplines(std.out, ""))
         self.assertTrue(greplines(std.err, "commits: *3"))
         std = sh(F"{git} rev-parse HEAD", cwd=N)
-        self.assertTrue(greplines(std.out, "..........."))
-        newhead = std.out.strip()
-        logg.info("--- new HEAD %s", newhead)
-        self.assertNotEqual(head, newhead)
+        self.assertTrue(greplines(std.out, COMMITHASH))
+        self.assertNotEqual(head, std.out.strip())
         log = sh(F"{git} log --graph", cwd=N)
         logg.log(SHOWGRAPH, ">>>\n%s", log.out)
         self.assertTrue(greplines(log.out, "hello-B", "hello-A", "license"))
@@ -867,7 +886,6 @@ class ImportMergeTest(TestCase):
         catB = sh_cat("B.fi", cwd=tmp)
         self.assertTrue(greplines(catB.out, "hello-B"))
         #
-        merge = fs.abspath(MERGE)
         N = fs.join(tmp, "N")
         std = sh(F"{git} init -b main N", cwd=tmp)
         self.assertTrue(greplines(std.out, "Initialized empty"))
@@ -879,24 +897,24 @@ class ImportMergeTest(TestCase):
         self.assertTrue(greplines(std.out, ""))
         std = sh(F"{git} commit -m license LICENSE", cwd=N)
         self.assertTrue(greplines(std.out, "main .* license"))
+        #
+        merge = fs.relpath(MERGE, tmp)
+        cover= F"{COVERAGE} run" if COVER else F"{PYTHON}"
         std = sh(F"{git} rev-parse HEAD", cwd=N)
-        self.assertTrue(greplines(std.out, "..........."))
+        self.assertTrue(greplines(std.out, COMMITHASH))
         head = std.out.strip()
-        logg.info("- using HEAD %s", head)
-        std = sh(
-            F"{py} {merge} A.fi B.fi -o N.fi -H {head} -L --merge --subdir travel", cwd=tmp)
+        std = sh(F"{cover} {merge} A.fi B.fi -o N.fi --head {head} -L --merge --subdir travel", cwd=tmp)
         self.assertTrue(greplines(std.out, ""))
         self.assertTrue(greplines(std.err, ""))
         catN = sh_cat("N.fi", cwd=tmp)
         self.assertTrue(greplines(catN.out, "hello-A", "hello-B"))
+        #
         std = sh(F"{git} fast-import < ../N.fi", cwd=N)
         self.assertTrue(greplines(std.out, ""))
         self.assertTrue(greplines(std.err, "commits: *3"))
         std = sh(F"{git} rev-parse HEAD", cwd=N)
-        self.assertTrue(greplines(std.out, "..........."))
-        newhead = std.out.strip()
-        logg.info("--- new HEAD %s", newhead)
-        self.assertNotEqual(head, newhead)
+        self.assertTrue(greplines(std.out, COMMITHASH))
+        self.assertNotEqual(head, std.out.strip())
         log = sh(F"{git} log --graph", cwd=N)
         logg.log(SHOWGRAPH, ">>>\n%s", log.out)
         self.assertTrue(greplines(log.out, "hello-B", "hello-A", "license"))
@@ -909,7 +927,12 @@ class ImportMergeTest(TestCase):
         wants = {"travel/world.txt": ["again"], 'LICENSE': ['OK']}
         self.assertEqual(wants, files)
         self.rm_testdir()
-
+    def test_999(self) -> None:
+        merge = fs.relpath(MERGE, TESTDIR)
+        std = sh(F"{COVERAGE} combine *.coverage", cwd=TESTDIR)
+        std = sh(F"{COVERAGE} annotate {merge}", cwd=TESTDIR)
+        std = sh(F"{COVERAGE} report {merge}", cwd=TESTDIR)
+        print(std.out)
 
 if __name__ == "__main__":
     # unittest.main()
@@ -919,12 +942,18 @@ if __name__ == "__main__":
                        default=0, help="more verbose logging")
     cmdline.add_option("-^", "--quiet", action="count",
                        default=0, help="less verbose logging")
+    cmdline.add_option("--script1", metavar=MERGE)
+    cmdline.add_option("--git", metavar=GIT)
+    cmdline.add_option("--python", metavar=PYTHON, default=PYTHON)
+    cmdline.add_option("--coverage", metavar=COVERAGE, default=COVERAGE)
+    cmdline.add_option("-C", "--cover", action="count", default=0,
+                       help="make {script},cover [%default]")
     cmdline.add_option("-k", "--keep", action="count",
-                       default=0, help="keep testdir")
-    cmdline.add_option("-S", "--showgraph", action="store_true", default=False,
+                       default=0, help="keep testdir = ./tmp/{testname}/")
+    cmdline.add_option("-S", "--showgraph", action="count", default=0,
                        help="Show the final log-graph on each test. [%default]")
     cmdline.add_option("--failfast", action="store_true", default=False,
-                       help="Stop the test run on the first error or failure. [%default]")
+                       help="Stop the test run on the first error or failure.")
     cmdline.add_option("--xmlresults", metavar="FILE", default=None,
                        help="capture results as a junit xml file [%default]")
     opt, args = cmdline.parse_args()
@@ -932,6 +961,12 @@ if __name__ == "__main__":
     KEEP = opt.keep
     if opt.showgraph:
         SHOWGRAPH = EXEC
+    MERGE = opt.script1 or MERGE
+    GIT = opt.git or GIT
+    PYTHON = opt.python or PYTHON
+    COVERAGE = opt.coverage or COVERAGE
+    COVER = opt.cover
+    #
     if not args:
         args = ["test_*"]
     suite = TestSuite()
