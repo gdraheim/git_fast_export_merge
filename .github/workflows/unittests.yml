@@ -26,7 +26,7 @@ jobs:
         sudo apt-get install --fix-broken --ignore-missing python3-pip
     - name: 'install git'
       run: |
-        pip3 install git
+        sudo apt-get install git
     - name: 'install unittest-xml-reporting'
       run: |
         pip3 install unittest-xml-reporting
