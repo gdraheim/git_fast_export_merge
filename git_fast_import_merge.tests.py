@@ -1,7 +1,7 @@
 #! /usr/bin/env python3
 
 __copyright__ = "(C) 2023-2024 Guido Draheim, licensed under the Apache License 2.0"""
-__version__ = "1.0.1316"
+__version__ = "1.0.1317"
 
 from typing import Optional, Any, List, Union, Iterator, NamedTuple, Mapping, Dict
 
