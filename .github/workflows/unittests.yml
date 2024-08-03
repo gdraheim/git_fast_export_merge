@@ -41,11 +41,3 @@ jobs:
       with:
         name: test-results
         path: '**/TEST-*.xml'
-    - name: 'attach testresults'
-      if: always()
-      uses: EnricoMi/publish-unit-test-result-action@v2
-      with:
-        commit: ${{ github.event.workflow_run.head_sha }}
-        files: '**/TEST-*.xml'
-        check_name: 'Unit tests'
-        report_individual_runs: "true"
