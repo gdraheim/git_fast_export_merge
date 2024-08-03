@@ -22,7 +22,7 @@ checkcode cc:
 	$(PYTHON3) _checkcode.py $(SCRIPT) $(TESTS)
 
 test: ; $(PYTHON3) $(TESTS) $V
-test tests: ; $(PYTHON3) $(TESTS) $V --showgraph
+tests: ; $(PYTHON3) $(TESTS) $V --showgraph
 test_%: ; $(PYTHON3) $(TESTS) --failfast --showgraph $V $@ 
 t_%: ; $(PYTHON3) $(TESTS) --failfast --showgraph $V tes$@ 
 
