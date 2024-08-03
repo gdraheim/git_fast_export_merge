@@ -62,5 +62,5 @@ The code is doing what it had to do. There are surely some features missing.
 
 Please create a ticket.... and dont' forget to create a testcase.
 
-.... the usual checks for a Release are in [DEVGUID.MD](DEVGUIDE.MD)
+.... the usual checks for a Release are in [DEVGUIDE.MD](DEVGUIDE.MD)
 
