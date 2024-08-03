@@ -39,7 +39,7 @@ COVER = 0
 MERGE = "git_fast_import_merge.py"
 TESTDIR = "tmp"
 COMMITHASH = "[0-9a-h][0-9a-h][0-9a-h][0-9a-h][0-9a-h][0-9a-h][0-9a-h][0-9a-h][0-9a-h][0-9a-h][0-9a-h][0-9a-h][0-9a-h][0-9a-h]"
-TIMEFORMAT= "[1-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9][T.][0-9][0-9]:[0-9][0-9].*[+-][0-9][0-9]"
+TIMEFORMAT = "[1-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9][T.][0-9][0-9]:[0-9][0-9].*[+-][0-9][0-9]"
 
 
 def sx__(cmd: str, cwd: Optional[str] = None, shell: bool = True, env: Mapping[str, str] = {"LANG": "C"}, **args: Any) -> str:
@@ -971,7 +971,7 @@ class ImportMergeTest(TestCase):
         std = sh(F"{cover} {merge} A.fi B.fi -o N.fi --skipsubject=again --merge", cwd=tmp)
         self.assertTrue(greplines(std.out, ""))
         catN = sh_cat(F"N.fi", cwd=tmp)
-        self.assertTrue(greplines(catN.out, "hello-A", "hello-B",  ))
+        self.assertTrue(greplines(catN.out, "hello-A", "hello-B",))
         self.assertFalse(greplines(catN.out, "merge :"))  # no merge anymore needed
         #
         std = sh(F"{git} fast-import < ../N.fi", cwd=N)
@@ -1919,7 +1919,7 @@ class ImportMergeTest(TestCase):
         self.assertFalse(greplines(catN2.out, "merge :"))  # and 'updated' has no merge
         #
         std = sh(F"{git} fast-import < ../N2.fi", cwd=N)
-        self.assertTrue(greplines(std.err, "commits: *1")) # only the 'updated'
+        self.assertTrue(greplines(std.err, "commits: *1"))  # only the 'updated'
         self.assertTrue(greplines(std.out, ""))
         #
         log = sh(F"{git} log --graph", cwd=N)
@@ -2141,7 +2141,7 @@ class ImportMergeTest(TestCase):
         self.assertFalse(greplines(catN2.out, "merge :"))  # and 'updated' has no merge
         #
         std = sh(F"{git} fast-import < ../N2.fi", cwd=N)
-        self.assertTrue(greplines(std.err, "commits: *1")) # only the 'updated'
+        self.assertTrue(greplines(std.err, "commits: *1"))  # only the 'updated'
         self.assertTrue(greplines(std.out, ""))
         #
         log = sh(F"{git} log --graph", cwd=N)
