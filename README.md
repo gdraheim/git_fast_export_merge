@@ -47,7 +47,7 @@ If you say `--into=./path/to/workspace` then the tool will run these commands it
 And adding `--import` then the fast-import will run on the into-workspace right-away.
 However this is completely optional.
 
-# skip and modify
+## skip and modify
 
 Using glob patterns, it is possible to skip patches with `--skipsubject` and `--skipauthor`.
 
@@ -56,4 +56,11 @@ Using glob patterns, it is possible to set a new value with `--replaceauthor new
 if the glob pattern does not include `'*'` then it is considered a partial match
 otherwise it becomes a full match, so you can decide to match and front or back.
 
+## I take patches!
+
+The code is doing what it had to do. There are surely some features missing.
+
+Please create a ticket.... and dont' forget to create a testcase.
+
+.... the usual checks for a Release are in [DEVGUIDE.MD]
 
