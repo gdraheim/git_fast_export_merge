@@ -10,13 +10,14 @@
 * `make show`
 * `make uninstall`
 * `make version`
-* git commit -m v...
+  * git commit -m v...
 * `make install`
 * `make show`
 * `make uninstall`
 * `git push` 
 * wait for github workflows to finish
-* git tag v..... 
+* `make tag`
+  * git tag v..... 
 * `git push --tags`
 * `make build`
 * ..... twine...
