@@ -36,6 +36,7 @@ DATE = ""
 SUBDIR = ""
 MERGES = False
 COMMITTER = ""
+SKIPSUBJECT: List[str] = []
 SKIPAUTHORS: List[str] = []
 REPLACEAUTHORS: List[str] = []
 
@@ -64,6 +65,7 @@ class Commit(NamedTuple):
     blob: Blob
     merges: List[str]
     changes: List[str]
+    subject: str
     author: str
     committer: str
     time: Time
@@ -137,6 +139,8 @@ def filemarks_from(change: str) -> Dict[str, str]:
 
 
 def commit_from(blob: Blob) -> Commit:
+    datalen = 0
+    subject = ""
     author = ""
     committer = ""
     changes = []
@@ -151,11 +155,16 @@ def commit_from(blob: Blob) -> Commit:
                 committer = line
                 continue
             if line.startswith("data "):
+                datalen = int(line[len("data "):].strip())
                 wait = "changes"
                 continue
         if wait == "changes":
             if not line.strip():
                 break
+            if not subject and datalen:
+                subject = line
+                datalen -= len(line)
+                continue
             if line.startswith("from "):
                 merges += [line]
                 continue
@@ -168,7 +177,7 @@ def commit_from(blob: Blob) -> Commit:
                 logg.debug("?  %s", line)
             else:
                 logg.warning("?? %s", line)
-    return Commit(blob, merges, changes, author, committer, with_time_from(committer or author))
+    return Commit(blob, merges, changes, subject, author, committer, with_time_from(committer or author))
 
 
 def run(files: List[str]) -> None:
@@ -239,6 +248,11 @@ def run(files: List[str]) -> None:
             for skip in SKIPAUTHORS:
                 skips = skip if "*" in skip else F"*{skip}*"
                 if fnmatch(commit.author, skips):
+                    ignore = True
+                    break
+            for skip in SKIPSUBJECT:
+                skips = skip if "*" in skip else F"*{skip}*"
+                if fnmatch(commit.subject, skips):
                     ignore = True
                     break
             if ignore:
@@ -516,9 +530,11 @@ if __name__ == "__main__":
                        help="and import --into=DIR from --output=FILE right away")
     cmdline.add_option("-c", "--committer", metavar="mail", default="",
                        help="defaults to author from ~/.gitconfig")
-    cmdline.add_option("-s", "--skip", metavar="author*", action="append", default=[],
+    cmdline.add_option("--skipsubject", metavar="fixed-it", action="append", default=[],
+                       help="skip commits matching some -m subject message")
+    cmdline.add_option("--skipauthor", metavar="*author@corp", action="append", default=[],
                        help="skip commits matching some author")
-    cmdline.add_option("-r", "--replace", metavar="old=new", action="append", default=[],
+    cmdline.add_option("--replaceauthor", metavar="old=new", action="append", default=[],
                        help="replace author matched by left part")
     cmdline.add_option("-m", "--merges", action="store_true", default=False,
                        help="generate merges for different inputs")
@@ -534,8 +550,9 @@ if __name__ == "__main__":
     MERGES = opt.merges
     BRANCH = opt.branch
     OUTPUT = opt.output
-    REPLACEAUTHORS = opt.replace
-    SKIPAUTHORS = opt.skip
+    REPLACEAUTHORS = opt.replaceauthor
+    SKIPAUTHORS = opt.skipauthor
+    SKIPSUBJECT = opt.skipsubject
     COMMITTER = opt.committer
     if not COMMITTER:
         COMMITTER = gitconfig_user()
