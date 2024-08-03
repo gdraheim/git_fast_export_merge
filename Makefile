@@ -15,8 +15,10 @@ FOR=today
 
 help:
 	$(PYTHON3) $(SCRIPT) --help
+check:
+	$(MAKE) tests
 
-test: ; $(PYTHON3) $(TESTS) $V
+test tests: ; $(PYTHON3) $(TESTS) $V
 test_%: ; $(PYTHON3) $(TESTS) --failfast --showgraph $V $@ 
 t_%: ; $(PYTHON3) $(TESTS) --failfast --showgraph $V tes$@ 
 
