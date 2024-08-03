@@ -26,9 +26,6 @@ jobs:
       run: |
         find . -type d
         mypy --version
-    - name: 'workaround mypy bug'
-      run: |
-         sed -i -e "s|return codecs.*|& # type: ignore|" software/dotnetrc.py
     - name: 'make type (mypy strict type checking)'
       id: check
       run: |
