@@ -1,4 +1,4 @@
-[![Code Coverage](https://img.shields.io/badge/9%20test-85%25%20coverage-brightgreen)](https://github.com/gdraheim/git_fast_import_merge/blob/main/git_fast_import_merge.tests.py)
+[![Code Coverage](https://img.shields.io/badge/17%20tests-87%25%20coverage-brightgreen)](https://github.com/gdraheim/git_fast_import_merge/blob/main/git_fast_import_merge.tests.py)
 [![PyPI version](https://badge.fury.io/py/git_fast_import_merge.svg)](https://pypi.org/project/git_fast_import_merge/)
 
 

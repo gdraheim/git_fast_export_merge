@@ -35,6 +35,7 @@ GIT = "git"
 RUN = "--no-pager"
 PYTHON = "python3"
 COVERAGE = "coverage3"
+COVER = 0
 MERGE = "git_fast_import_merge.py"
 TESTDIR = "tmp"
 COMMITHASH = "[0-9a-h][0-9a-h][0-9a-h][0-9a-h][0-9a-h][0-9a-h][0-9a-h][0-9a-h][0-9a-h][0-9a-h][0-9a-h][0-9a-h][0-9a-h][0-9a-h]"
@@ -1650,6 +1651,7 @@ class ImportMergeTest(TestCase):
         self.rm_testdir()
 
     def test_999(self) -> None:
+        if not COVER: self.skipTest("no --cover enabled")
         merge = fs.relpath(MERGE, TESTDIR)
         std = sh(F"{COVERAGE} combine *.coverage", cwd=TESTDIR)
         std = sh(F"{COVERAGE} annotate {merge}", cwd=TESTDIR)
