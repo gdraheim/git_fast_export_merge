@@ -583,7 +583,7 @@ if __name__ == "__main__":
         DATE = git_last_date(opt.into)
         if opt.imports:
             if not OUTPUT:
-                OUTPUT = fs.normpath(opt.into) + ".fi"
+                OUTPUT = fs.normpath(opt.into) + ".fi.tmp"
     run(args)
     if opt.imports:
         git_fast_import(opt.into, OUTPUT)
