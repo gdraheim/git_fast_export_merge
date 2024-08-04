@@ -2157,6 +2157,15 @@ class ImportMergeTest(TestCase):
         wants = {"world.txt": ["updated"], }
         self.assertEqual(wants, files)
         self.rm_testdir()
+    def test_990(self) -> None:
+        tmp = self.testdir()
+        cover = F"{COVERAGE} run" if COVER else F"{PYTHON}"
+        tests = __file__.replace(".tests.py", ".test.py")
+        execs = fs.relpath(tests, tmp)
+        std = sh(F"{cover} {execs} -v time_from", cwd=tmp)
+        logg.log(EXEC, ">>\n%s", std.err)
+        self.rm_testdir()
+
     def test_999(self) -> None:
         if not COVER: self.skipTest("no --cover enabled")
         merge = fs.relpath(MERGE, TESTDIR)

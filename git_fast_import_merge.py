@@ -104,26 +104,28 @@ def time_from(spec: str) -> Optional[Time]:
     if ">" in spec:
         return time_from(spec.split(">", 1)[1])
     # in fast-import files, the time is given as unix-time seconds plus zone
-    m = re.match(" *(\\d+) *" "([+-]\\d\\d):?(\\d\\d)", spec)
-    if m:
-        time = Time.fromtimestamp(int(m.group(1)))
-        plus = Plus(hours=int(m.group(2)), minutes=int(m.group(3)))
-        return time.astimezone(TimeZone(plus))
     m = re.match(" *(\\d\\d\\d\\d\\d+) *"
-                 "([+-]\\d\\d):?(\\d\\d)", spec)
+                 "([+-]\\d\\d):?(\\d\\d) *$", spec)
     if m:
         time = Time.fromtimestamp(int(m.group(1)))
-        plus = Plus(hours=int(m.group(2)), minutes=int(m.group(3)))
-        return time.astimezone(TimeZone(plus))
+        plus = TimeZone(Plus(hours=int(m.group(2)), minutes=int(m.group(3))))
+        return time.astimezone(plus)
     m = re.match(
-        "(\\d\\d\\d\\d)-(\\d\\d)-(\\d\\d)"
+        " *(\\d\\d\\d\\d)-(\\d\\d)-(\\d\\d)"
         "[T.](\\d\\d):(\\d\\d):(\\d\\d) *"
-        "([+-]\\d\\d):?(\\d\\d)", spec)
+        "([+-]\\d\\d):?(\\d\\d) *$", spec)
     if m:
-        time = Time(int(m.group(1)), int(m.group(2)), int(m.group(3)),
-                    int(m.group(4)), int(m.group(5)), int(m.group(6)))
-        plus = Plus(hours=int(m.group(7)), minutes=int(m.group(8)))
-        return time.astimezone(TimeZone(plus))
+        plus = TimeZone(Plus(hours=int(m.group(7)), minutes=int(m.group(8))))
+        return Time(int(m.group(1)), int(m.group(2)), int(m.group(3)),
+                    int(m.group(4)), int(m.group(5)), int(m.group(6)),
+                    tzinfo=plus)
+    m = re.match(
+        " *(\\d\\d\\d\\d)-(\\d\\d)-(\\d\\d)"
+        "[Z.](\\d\\d):(\\d\\d):(\\d\\d) *$", spec)
+    if m:
+        return Time(int(m.group(1)), int(m.group(2)), int(m.group(3)),
+                    int(m.group(4)), int(m.group(5)), int(m.group(6)),
+                    tzinfo=TimeZone.utc)
     logg.warning("unknown time desc: %s", spec)
     return None
 
