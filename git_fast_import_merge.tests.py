@@ -254,6 +254,14 @@ class ImportMergeTest(TestCase):
         std = sh(F"{cover} {execs} -v time_from", cwd=tmp)
         logg.log(EXEC, ">>\n%s", std.err)
         self.rm_testdir()
+    def test_020(self) -> None:
+        tmp = self.testdir()
+        cover = F"{COVERAGE} run" if COVER else F"{PYTHON}"
+        tests = __file__.replace(".tests.py", ".test.py")
+        execs = fs.relpath(tests, tmp)
+        std = sh(F"{cover} {execs} -v commit_from", cwd=tmp)
+        logg.log(EXEC, ">>\n%s", std.err)
+        self.rm_testdir()
     def test_100(self) -> None:
         """ import to empty repo"""
         git = F"{GIT} {RUN}"
