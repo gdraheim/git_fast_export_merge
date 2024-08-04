@@ -522,7 +522,7 @@ def git_fast_import(repo: str, fastimport: str) -> str:
 
 if __name__ == "__main__":
     XDG_CONFIG_HOME = os.environ.get("XDG_CONFIG_HOME", "~/.config")
-    OPT = fs.join(XDG_CONFIG_HOME, fs.basename(__file__).replace(".py",".append.opt"))
+    OPT = fs.join(XDG_CONFIG_HOME, fs.basename(__file__).replace(".py", ".append.opt"))
     from optparse import OptionParser
     cmdline = OptionParser("%prog [files.fi ..]", description=__doc__)
     cmdline.formatter.max_help_position = 33
@@ -564,7 +564,7 @@ if __name__ == "__main__":
     for __optionsfile in (opt.append or [OPT]):
         if os.path.exists(os.path.expanduser(__optionsfile)):
             with open(os.path.expanduser(__optionsfile)) as f:
-                __args = ["--" + o.strip() for o in f if o.split(" ")[0] not in ("","#")]
+                __args = ["--" + o.strip() for o in f if o.split(" ")[0] not in ("", "#")]
                 cmdline.parse_args(__args)
     HEAD = opt.head
     DATE = opt.date
