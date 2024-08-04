@@ -45,6 +45,42 @@ class time_from(TestCase):
       except Exception as e:
           self.assertIn("not a time spec", str(e))
 
+class commit_from(TestCase):
+   def test_020(self) -> None:
+       blob = ["commit refs/heads/main", "mark :2", 
+               "author Mr.A <user@A> 1722770218 +0200",
+               "committer Mr.A <user@A> 1722770218 +0200",
+               "data 6", "hello", "M 100644 :1 world.txt"]
+       have = app.commit_from(app.Blob(app.Fromfile("X", "test"), "commit", "", "\n".join(blob)))
+   def test_021(self) -> None:
+       blob = ["commit refs/heads/main", "mark :2", "merge :1",
+               "author Mr.A <user@A> 1722770218 +0200",
+               "committer Mr.A <user@A> 1722770218 +0200",
+               "data 6", "hello", "M 100644 :1 world.txt"]
+       have = app.commit_from(app.Blob(app.Fromfile("X", "test"), "commit", "", "\n".join(blob)))
+   def test_022(self) -> None:
+       blob = ["commit refs/heads/main", "mark :2", 
+               "author Mr.A <user@A> 1722770218 +0200",
+               "committer Mr.A <user@A> 1722770218 +0200",
+               "data 6", "hello", "M 100644 :1 world.txt",
+               "merge :1",]
+       have = app.commit_from(app.Blob(app.Fromfile("X", "test"), "commit", "", "\n".join(blob)))
+   def test_028(self) -> None:
+       blob = ["commit refs/heads/main", "mark :2", "foobar :1",
+               "author Mr.A <user@A> 1722770218 +0200",
+               "committer Mr.A <user@A> 1722770218 +0200",
+               "data 6", "hello", "M 100644 :1 world.txt",
+               "fubar :1",]
+       have = app.commit_from(app.Blob(app.Fromfile("X", "test"), "commit", "", "\n".join(blob)))
+   def test_029(self) -> None:
+       blob = ["commit refs/heads/main", "mark :2", 
+               "author Mr.A <user@A> 1722770218 +0200",
+               "committer Mr.A <user@A> 1722770218 +0200",
+               "data 6", "hello", "M 100644 :1 world.txt",
+               "fubar :1",]
+       have = app.commit_from(app.Blob(app.Fromfile("X", "test"), "commit", "", "\n".join(blob)))
+
+
 if __name__ == "__main__":
    main()
 
