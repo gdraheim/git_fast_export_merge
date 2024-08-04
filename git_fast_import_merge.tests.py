@@ -2369,8 +2369,8 @@ class ImportMergeTest(TestCase):
         wants = {"world.txt": ["updated"], }
         self.assertEqual(wants, files)
         self.rm_testdir()
-    def test_410(self) -> None:
-        """ import to empty repo - with third commit - and update --into --import"""
+    def test_420(self) -> None:
+        """ import to empty repo - four commits - with update --into --import"""
         py = F"{PYTHON}"
         git = F"{GIT} {RUN}"
         tmp = self.testdir()
@@ -2460,6 +2460,117 @@ class ImportMergeTest(TestCase):
         std = sh(F"{cover} {merge} A.fi B2.fi --import --merge --into=N", cwd=tmp)
         self.assertTrue(greplines(std.out, ""))
         # there is an implicit N.fi here for the automated fast-import
+        #
+        log = sh(F"{git} log --graph", cwd=N)
+        logg.log(SHOWGRAPH, ">>>\n%s", log.out)
+        self.assertTrue(greplines(log.out, "Mr.B", "Mr.A", "Mr.B", "Mr.A"))
+        self.assertTrue(greplines(log.out, "update-B", "again", "hello-B", "hello-A"))
+        self.assertFalse(greplines(log.out, "license"))
+        self.assertTrue(greplines(log.out, "Merge:"))
+        #
+        M = fs.join(tmp, "M")
+        out = sh(F"{git} clone --local N M", cwd=tmp)
+        files = loadworkspace(M)
+        wants = {"world.txt": ["updated"], }
+        self.assertEqual(wants, files)
+        self.rm_testdir()
+    def test_430(self) -> None:
+        """ import to empty repo - check historylog - with update --into --import"""
+        py = F"{PYTHON}"
+        git = F"{GIT} {RUN}"
+        tmp = self.testdir()
+        A = fs.join(tmp, "A")
+        std = sh(F"{git} init -b main A", cwd=tmp)
+        self.assertTrue(greplines(std.out, "Initialized empty Git repository"))
+        std = sh(F"{git} config user.name Mr.A && {git} config user.email user@A", cwd=A)
+        self.assertTrue(greplines(std.out, ""))
+        std = sh(F"echo 'hello' > world.txt", cwd=A)
+        self.assertTrue(greplines(std.out, ""))
+        std = sh(F"{git} add world.txt", cwd=A)
+        self.assertTrue(greplines(std.out, ""))
+        std = sh(F"{git} commit -m hello-A world.txt", cwd=A)
+        self.assertTrue(greplines(std.out, "main .* hello-A"))
+        std = sh(F"{git} log", cwd=A)
+        self.assertTrue(greplines(std.out, "commit ", " hello-A"))
+        #
+        sleep(2)
+        #
+        B = fs.join(tmp, "B")
+        std = sh(F"{git} init -b main B", cwd=tmp)
+        self.assertTrue(greplines(std.out, "Initialized empty Git repository"))
+        std = sh(F"{git} config user.name Mr.B && {git} config user.email user@B", cwd=B)
+        self.assertTrue(greplines(std.out, ""))
+        std = sh(F"echo 'hello' > world.txt", cwd=B)
+        self.assertTrue(greplines(std.out, ""))
+        std = sh(F"{git} add world.txt", cwd=B)
+        self.assertTrue(greplines(std.out, ""))
+        std = sh(F"{git} commit -m hello-B world.txt", cwd=B)
+        self.assertTrue(greplines(std.out, "main .* hello-B"))
+        std = sh(F"{git} log", cwd=B)
+        self.assertTrue(greplines(std.out, "commit ", " hello-B"))
+        #
+        sleep(2)
+        #
+        std = sh(F"echo 'again' > world.txt", cwd=A)
+        self.assertTrue(greplines(std.out, ""))
+        std = sh(F"{git} commit -m again world.txt", cwd=A)
+        self.assertTrue(greplines(std.out, "main .* again"))
+        #
+        std = sh(F"{git} fast-export HEAD > ../A.fi", cwd=A)
+        self.assertTrue(greplines(std.out, ""))
+        catA = sh_cat(F"A.fi", cwd=tmp)
+        self.assertTrue(greplines(catA.out, "hello-A"))
+        std = sh(F"{git} fast-export HEAD > ../B.fi", cwd=B)
+        self.assertTrue(greplines(std.out, ""))
+        catB = sh_cat(F"B.fi", cwd=tmp)
+        self.assertTrue(greplines(catB.out, "hello-B"))
+        self.assertNotEqual(greplines(catA.out, "committer .*"),
+                            greplines(catB.out, "committer .*"))
+        #
+        N = fs.join(tmp, "N")
+        std = sh(F"{git} init -b main N", cwd=tmp)
+        self.assertTrue(greplines(std.out, "Initialized empty"))
+        std = sh(F"{git} config user.name Mr.N && {git} config user.email user@N", cwd=N)
+        self.assertTrue(greplines(std.out, ""))
+        #
+        merge = fs.relpath(MERGE, tmp)
+        cover = F"{COVERAGE} run" if COVER else F"{PYTHON}"
+        std = sh(F"{cover} {merge} A.fi B.fi -o N.fi --merge --historyfile=N.log", cwd=tmp)
+        self.assertTrue(greplines(std.out, ""))
+        catN = sh_cat(F"N.fi", cwd=tmp)
+        self.assertTrue(greplines(catN.out, "hello-A", "hello-B"))
+        self.assertTrue(greplines(catN.out, "merge :"))
+        logN = sh_cat(F"N.log", cwd=tmp)
+        logg.info("merge1>>\n%s", logN.out)
+        self.assertTrue(greplines(logN.out, ": again", ": hello-B", ": hello-A"))
+        #
+        std = sh(F"{git} fast-import < ../N.fi", cwd=N)
+        self.assertTrue(greplines(std.err, "commits: *3"))
+        self.assertTrue(greplines(std.out, ""))
+        #
+        sleep(2)
+        #
+        std = sh(F"echo 'updated' > world.txt", cwd=B)
+        self.assertTrue(greplines(std.out, ""))
+        std = sh(F"{git} add world.txt", cwd=B)
+        self.assertTrue(greplines(std.out, ""))
+        std = sh(F"{git} commit -m update-B world.txt", cwd=B)
+        self.assertTrue(greplines(std.out, "main .* update-B"))
+        std = sh(F"{git} log", cwd=B)
+        self.assertTrue(greplines(std.out, "commit ", " update-B"))
+        #
+        std = sh(F"{git} fast-export HEAD > ../B2.fi", cwd=B)
+        self.assertTrue(greplines(std.out, ""))
+        catB2 = sh_cat(F"B2.fi", cwd=tmp)
+        self.assertTrue(greplines(catB2.out, "hello-B"))
+        self.assertTrue(greplines(catB2.out, "update-B"))
+        #
+        std = sh(F"{cover} {merge} A.fi B2.fi --import --merge --into=N --historylog", cwd=tmp)
+        self.assertTrue(greplines(std.out, ""))
+        # there is an implicit N.fi here for the automated fast-import
+        logg.info("merge2>>\n%s", std.err)
+        self.assertTrue(std.err, "commits: *1")
+        self.assertTrue(std.err, "DONE:MERGE:.*: update-B")
         #
         log = sh(F"{git} log --graph", cwd=N)
         logg.log(SHOWGRAPH, ">>>\n%s", log.out)
