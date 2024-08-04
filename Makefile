@@ -86,7 +86,7 @@ ins install:
 	export DISTUTILS_DEBUG=1; \
 	$(PYTHON3) -m pip install --no-compile --user .
 	rm -v setup.py
-	$(MAKE) shows | sed -e "s|[.][.]/[.][.]/[.][.]/bin|$$HOME/.local/bin|"
+	$(MAKE) show | sed -e "s|[.][.]/[.][.]/[.][.]/bin|$$HOME/.local/bin|"
 show:
 	test -d tmp || mkdir -v tmp
 	cd tmp && $(PYTHON3) -m pip show -f $$(sed -e '/^name *=/!d' -e 's/.*= *//' ../setup.cfg)
