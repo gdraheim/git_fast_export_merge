@@ -6,3 +6,4 @@ dist
 *.egg-info
 setup.py
 *,cover
+__pycache__
