@@ -19,8 +19,8 @@ from logging import getLogger, basicConfig, WARNING, INFO, DEBUG, addLevelName
 
 NOTE = (WARNING + INFO) // 2
 HINT = (DEBUG + INFO) // 2
-EXEC = INFO + 1
-TMP = INFO + 2
+EXEC = NOTE + 1
+TMP = NOTE + 2
 addLevelName(HINT, "HINT")
 addLevelName(NOTE, "NOTE")
 addLevelName(EXEC, "EXEC")
@@ -89,9 +89,9 @@ def run(cmd: Union[str, List[str]], cwd: Optional[str] = None, shell: Optional[b
     text_err = decodes(err)
     logg.debug("stdout = %s", text_out.splitlines())
     if text_err:
-        logg.debug("stderr = %s", text_err.splitlines())
+        logg.log(HINT, " stderr = %s", text_err.splitlines())
     if run.returncode:
-        logg.debug("return = %s", run.returncode)
+        logg.log(HINT, " return = %s", run.returncode)
     return Run(text_out, text_err, run.returncode)
 
 
@@ -1051,7 +1051,7 @@ class ImportMergeTest(TestCase):
         std = sh(F"{git} rev-parse HEAD", cwd=N)
         self.assertTrue(greplines(std.out, COMMITHASH))
         head = std.out.strip()
-        std = sh(F"{cover} {merge} A.fi B.fi -o N.fi --head {head} -L", cwd=tmp)
+        std = sh(F"{cover} {merge} A.fi B.fi -o N.fi --head {head}", cwd=tmp)
         self.assertTrue(greplines(std.out, ""))
         self.assertTrue(greplines(std.err, ""))
         catN = sh_cat("N.fi", cwd=tmp)
@@ -1141,7 +1141,7 @@ class ImportMergeTest(TestCase):
         std = sh(F"{git} rev-parse HEAD", cwd=N)
         self.assertTrue(greplines(std.out, COMMITHASH))
         head = std.out.strip()
-        std = sh(F"{cover} {merge} A.fi B.fi -o N.fi --head {head} -L", cwd=tmp)
+        std = sh(F"{cover} {merge} A.fi B.fi -o N.fi --head {head}", cwd=tmp)
         self.assertTrue(greplines(std.out, ""))
         self.assertTrue(greplines(std.err, ""))
         catN = sh_cat("N.fi", cwd=tmp)
@@ -1235,7 +1235,7 @@ class ImportMergeTest(TestCase):
         std = sh(F"{git} rev-parse HEAD", cwd=N)
         self.assertTrue(greplines(std.out, COMMITHASH))
         head = std.out.strip()
-        std = sh(F"{cover} {merge} A.fi B.fi -o N.fi --head {head} -L --merge", cwd=tmp)
+        std = sh(F"{cover} {merge} A.fi B.fi -o N.fi --head {head} --merge", cwd=tmp)
         self.assertTrue(greplines(std.out, ""))
         self.assertTrue(greplines(std.err, ""))
         catN = sh_cat("N.fi", cwd=tmp)
@@ -1329,7 +1329,7 @@ class ImportMergeTest(TestCase):
         std = sh(F"{git} rev-parse HEAD", cwd=N)
         self.assertTrue(greplines(std.out, COMMITHASH))
         head = std.out.strip()
-        std = sh(F"{cover} {merge} A.fi B.fi -o N.fi --head {head} -L --merge --subdir travel", cwd=tmp)
+        std = sh(F"{cover} {merge} A.fi B.fi -o N.fi --head {head} --merge --subdir travel", cwd=tmp)
         self.assertTrue(greplines(std.out, ""))
         self.assertTrue(greplines(std.err, ""))
         catN = sh_cat("N.fi", cwd=tmp)
@@ -1422,7 +1422,7 @@ class ImportMergeTest(TestCase):
         std = sh(F"{git} rev-parse HEAD", cwd=N)
         self.assertTrue(greplines(std.out, COMMITHASH))
         head = std.out.strip()
-        std = sh(F"{cover} {merge} A.fi B.fi -o N.fi --head {head} --replaceauthor 'Mr.B=Mrs.B <user@B>' -L", cwd=tmp)
+        std = sh(F"{cover} {merge} A.fi B.fi -o N.fi --head {head} --replaceauthor 'Mr.B=Mrs.B <user@B>' ", cwd=tmp)
         self.assertTrue(greplines(std.out, ""))
         self.assertTrue(greplines(std.err, ""))
         catN = sh_cat("N.fi", cwd=tmp)
@@ -1517,7 +1517,7 @@ class ImportMergeTest(TestCase):
         std = sh(F"{git} rev-parse HEAD", cwd=N)
         self.assertTrue(greplines(std.out, COMMITHASH))
         head = std.out.strip()
-        std = sh(F"{cover} {merge} A.fi B.fi -o N.fi --head {head} --skipauthor=Mr.B -L", cwd=tmp)
+        std = sh(F"{cover} {merge} A.fi B.fi -o N.fi --head {head} --skipauthor=Mr.B ", cwd=tmp)
         self.assertTrue(greplines(std.out, ""))
         self.assertTrue(greplines(std.err, ""))
         catN = sh_cat("N.fi", cwd=tmp)
@@ -1612,7 +1612,7 @@ class ImportMergeTest(TestCase):
         std = sh(F"{git} rev-parse HEAD", cwd=N)
         self.assertTrue(greplines(std.out, COMMITHASH))
         head = std.out.strip()
-        std = sh(F"{cover} {merge} A.fi B.fi -o N.fi --head {head} --skipauthor=Mr.B -L --merge", cwd=tmp)
+        std = sh(F"{cover} {merge} A.fi B.fi -o N.fi --head {head} --skipauthor=Mr.B --merge", cwd=tmp)
         self.assertTrue(greplines(std.out, ""))
         self.assertTrue(greplines(std.err, ""))
         catN = sh_cat("N.fi", cwd=tmp)
@@ -1706,7 +1706,7 @@ class ImportMergeTest(TestCase):
         std = sh(F"{git} rev-parse HEAD", cwd=N)
         self.assertTrue(greplines(std.out, COMMITHASH))
         head = std.out.strip()
-        std = sh(F"{cover} {merge} A.fi B.fi -o N.fi --head {head} --skipsubject=hello-B -L --merge", cwd=tmp)
+        std = sh(F"{cover} {merge} A.fi B.fi -o N.fi --head {head} --skipsubject=hello-B --merge", cwd=tmp)
         self.assertTrue(greplines(std.out, ""))
         self.assertTrue(greplines(std.err, ""))
         catN = sh_cat("N.fi", cwd=tmp)
@@ -1800,7 +1800,7 @@ class ImportMergeTest(TestCase):
         std = sh(F"{git} rev-parse HEAD", cwd=N)
         self.assertTrue(greplines(std.out, COMMITHASH))
         head = std.out.strip()
-        std = sh(F"{cover} {merge} A.fi B.fi -o N.fi --head {head} --skipsubject=again -L --merge", cwd=tmp)
+        std = sh(F"{cover} {merge} A.fi B.fi -o N.fi --head {head} --skipsubject=again --merge", cwd=tmp)
         self.assertTrue(greplines(std.out, ""))
         self.assertTrue(greplines(std.err, ""))
         catN = sh_cat("N.fi", cwd=tmp)
@@ -2188,7 +2188,7 @@ if __name__ == "__main__":
     cmdline.add_option("--xmlresults", metavar="FILE", default=None,
                        help="capture results as a junit xml file [%default]")
     opt, args = cmdline.parse_args()
-    basicConfig(level=max(0, WARNING - 10 * opt.verbose + 10 * opt.quiet))
+    basicConfig(level=max(0, WARNING - 5 * opt.verbose + 10 * opt.quiet))
     KEEP = opt.keep
     if opt.showgraph:
         SHOWGRAPH = EXEC

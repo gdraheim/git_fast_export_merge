@@ -16,9 +16,11 @@ from datetime import datetime as Time
 from datetime import timezone as TimeZone
 from datetime import timedelta as Plus
 from collections import OrderedDict
+from configparser import ConfigParser
 from fnmatch import fnmatchcase as fnmatch
 from subprocess import check_output
 import os.path as fs
+import os
 import re
 import sys
 
@@ -96,19 +98,27 @@ class NewMark(NamedTuple):
 
 
 def time_from(spec: str) -> Optional[Time]:
+    if not spec.strip():
+        logg.debug("empty time spec: %s", spec)
+        return None
+    if ">" in spec:
+        return time_from(spec.split(">", 1)[1])
     # in fast-import files, the time is given as unix-time seconds plus zone
-    m = re.match(".*@[^<>]*> *(\\d+) *([+-]\\d\\d)(\\d\\d)", spec)
+    m = re.match(" *(\\d+) *" "([+-]\\d\\d):?(\\d\\d)", spec)
     if m:
         time = Time.fromtimestamp(int(m.group(1)))
         plus = Plus(hours=int(m.group(2)), minutes=int(m.group(3)))
         return time.astimezone(TimeZone(plus))
-    m = re.match("(\\d\\d\\d\\d\\d+) *([+-]\\d\\d)(\\d\\d)", spec)
+    m = re.match(" *(\\d\\d\\d\\d\\d+) *"
+                 "([+-]\\d\\d):?(\\d\\d)", spec)
     if m:
         time = Time.fromtimestamp(int(m.group(1)))
         plus = Plus(hours=int(m.group(2)), minutes=int(m.group(3)))
         return time.astimezone(TimeZone(plus))
     m = re.match(
-        "(\\d\\d\\d\\d)-(\\d\\d)-(\\d\\d)[T.](\\d\\d):(\\d\\d):(\\d\\d) *([+-]\\d\\d):?(\\d\\d)", spec)
+        "(\\d\\d\\d\\d)-(\\d\\d)-(\\d\\d)"
+        "[T.](\\d\\d):(\\d\\d):(\\d\\d) *"
+        "([+-]\\d\\d):?(\\d\\d)", spec)
     if m:
         time = Time(int(m.group(1)), int(m.group(2)), int(m.group(3)),
                     int(m.group(4)), int(m.group(5)), int(m.group(6)))
@@ -509,12 +519,16 @@ def git_fast_import(repo: str, fastimport: str) -> str:
 
 
 if __name__ == "__main__":
-    from configparser import ConfigParser
+    XDG_CONFIG_HOME = os.environ.get("XDG_CONFIG_HOME", "~/.config")
+    OPT = fs.join(XDG_CONFIG_HOME, fs.basename(__file__).replace(".py",".append.opt"))
     from optparse import OptionParser
     cmdline = OptionParser("%prog [files.fi ..]", description=__doc__)
     cmdline.formatter.max_help_position = 33
     cmdline.add_option("-v", "--verbose", action="count", default=0,
-                       help="increase logging level")
+                       help="more logging infos")
+    cmdline.add_option("-^", "--quiet", action="count", default=0,
+                       help="less logging infos")
+    cmdline.add_option("-@", dest="append", metavar=OPT, action="append", default=[])
     cmdline.add_option("-L", "--historylog", action="store_true", default=False,
                        help="log the generated history (for checking)")
     cmdline.add_option("-F", "--historyfile", metavar="F", default="",
@@ -528,15 +542,15 @@ if __name__ == "__main__":
     cmdline.add_option("-i", "--into", metavar="DIR",
                        help="want to import to that target git workspace")
     cmdline.add_option("--import", dest="imports", action="store_true", default=False,
-                       help="and import --into=DIR from --output=FILE right away")
-    cmdline.add_option("-c", "--committer", metavar="mail", default="",
-                       help="defaults to author from ~/.gitconfig")
+                       help="import --into=DIR right away (from output)")
     cmdline.add_option("--skipsubject", metavar="*debug*", action="append", default=[],
                        help="skip commits matching some -m subject message")
     cmdline.add_option("--skipauthor", metavar="*author@corp*", action="append", default=[],
                        help="skip commits matching some author")
     cmdline.add_option("--replaceauthor", metavar="old=new", action="append", default=[],
                        help="replace author matched by left part")
+    cmdline.add_option("-c", "--committer", metavar="mail", default="",
+                       help="defaults to author from ~/.gitconfig")
     cmdline.add_option("-m", "--merges", action="store_true", default=False,
                        help="generate merges for different inputs")
     cmdline.add_option("-b", "--branch", metavar="file", default="main",
@@ -544,7 +558,12 @@ if __name__ == "__main__":
     cmdline.add_option("-o", "--output", metavar="file", default="",
                        help="generate into file instead of stdout")
     opt, args = cmdline.parse_args()
-    basicConfig(level=ERROR - 5 * opt.verbose)
+    basicConfig(level=max(0, WARNING - 5 * opt.verbose + 10 * opt.quiet))
+    for __optionsfile in (opt.append or [OPT]):
+        if os.path.exists(os.path.expanduser(__optionsfile)):
+            with open(os.path.expanduser(__optionsfile)) as f:
+                __args = ["--" + o.strip() for o in f if o.split(" ")[0] not in ("","#")]
+                cmdline.parse_args(__args)
     HEAD = opt.head
     DATE = opt.date
     SUBDIR = opt.subdir
