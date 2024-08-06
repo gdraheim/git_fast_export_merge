@@ -2131,7 +2131,7 @@ class ImportMergeTest(TestCase):
         catN = sh_cat(F"N.fi", cwd=tmp)
         self.assertTrue(greplines(catN.out, "hello-B"))
         self.assertFalse(greplines(catN.out, "hello-A"))
-        self.assertFalse(greplines(catN.out, "merge :")) 
+        self.assertFalse(greplines(catN.out, "merge :"))
         #
         std = sh(F"{git} fast-import < ../N.fi", cwd=N)
         self.assertTrue(greplines(std.err, "commits: *2"))  # two less
@@ -2238,7 +2238,7 @@ class ImportMergeTest(TestCase):
         catN = sh_cat(F"N.fi", cwd=tmp)
         self.assertTrue(greplines(catN.out, "hello-A"))
         self.assertFalse(greplines(catN.out, "hello-B"))
-        self.assertFalse(greplines(catN.out, "merge :")) 
+        self.assertFalse(greplines(catN.out, "merge :"))
         #
         std = sh(F"{git} fast-import < ../N.fi", cwd=N)
         self.assertTrue(greplines(std.err, "commits: *2"))  # two less
