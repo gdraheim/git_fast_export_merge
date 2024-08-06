@@ -51,13 +51,16 @@ version:
 	-e "/^ *__copyright__/s/(C) [123456789][0123456789]* /(C) $$THISYEAR /" \
 	$$f; done; }
 	@ grep ^__version__ $(FILES) | grep -v .tests.py
-	@ ver=`cat $(SCRIPT) | sed -e '/__version__/!d' -e 's/.*= *"//' -e 's/".*//' -e q` \
-	; echo "# $(GIT) commit -m v$$ver"
-
+	@ $(MAKE) commit
+commit:
+	@ ver=`grep "version.*=" setup.cfg | sed -e "s/version *= */v/"` \
+	; echo ": $(GIT) commit -m $$ver"
 tag:
 	@ ver=`grep "version.*=" setup.cfg | sed -e "s/version *= */v/"` \
-	; rev=`git rev-parse --short HEAD` \
-	; echo ": ${GIT} tag $$ver $$rev"
+	; rev=`${GIT} rev-parse --short HEAD` \
+	; if test -r tmp.changes.txt \
+	; then echo ": ${GIT} tag -F tmp.changes.txt $$ver $$rev" \
+	; else echo ": ${GIT} tag $$ver $$rev" ; fi
 
 ############## https://pypi.org/...
 
